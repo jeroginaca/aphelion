@@ -1,0 +1,1534 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Aphelion Interplanetary</title>
+<meta name="description" content="Aphelion Interplanetary Agency — reusable starships built in orbit, bound for every world around the Sun.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;700;800;900&family=IBM+Plex+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&display=swap">
+<script>document.documentElement.classList.add('js');setTimeout(function(){document.documentElement.classList.add('ready','loaded')},5000);</script>
+<style>
+:root{
+  --ink:#04060c;--ink2:#0a0f1c;--bone:#e8ebf0;--mute:#97a1b4;--dim:#5d6679;
+  --line:rgba(232,235,240,.14);--line2:rgba(232,235,240,.28);
+  --foil:#d9a646;--foil2:#f3cf7a;--ice:#9cc2ff;
+  --fd:"Big Shoulders Display","Oswald","Arial Narrow",Impact,sans-serif;
+  --fb:"Instrument Sans","Helvetica Neue",Arial,sans-serif;
+  --fm:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  --gut:clamp(16px,4.5vw,72px);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{background:var(--ink);scroll-behavior:smooth}
+body{margin:0;background:var(--ink);color:var(--bone);font:400 16px/1.6 var(--fb);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+::selection{background:var(--foil);color:var(--ink)}
+a{color:inherit}
+#gl{position:fixed;inset:0;width:100%;height:100%;display:block;z-index:0;background:radial-gradient(120% 90% at 70% 40%,#0e1630 0%,#04060c 60%)}
+#scrim{position:fixed;inset:0;z-index:1;pointer-events:none;transition:opacity 1s ease,background .1s}
+#scrim::before,#scrim::after{content:"";position:absolute;inset:0;transition:opacity 1.1s ease;opacity:0}
+#scrim::before{background:linear-gradient(90deg,rgba(4,6,12,.86) 0%,rgba(4,6,12,.5) 34%,rgba(4,6,12,0) 62%)}
+#scrim::after{background:linear-gradient(270deg,rgba(4,6,12,.86) 0%,rgba(4,6,12,.5) 34%,rgba(4,6,12,0) 62%)}
+body[data-side="left"] #scrim::before{opacity:1}
+body[data-side="right"] #scrim::after{opacity:1}
+body[data-side="center"] #scrim::before,body[data-side="center"] #scrim::after{opacity:.55}
+#vig{position:fixed;inset:0;z-index:1;pointer-events:none;background:linear-gradient(180deg,rgba(4,6,12,.55),rgba(4,6,12,0) 16%,rgba(4,6,12,0) 82%,rgba(4,6,12,.7))}
+#grain{position:fixed;inset:-50%;z-index:6;pointer-events:none;opacity:.07;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .9 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  animation:grain 1.2s steps(5) infinite}
+@keyframes grain{0%{transform:translate(0,0)}20%{transform:translate(-3%,2%)}40%{transform:translate(2%,-4%)}60%{transform:translate(-4%,-1%)}80%{transform:translate(3%,3%)}100%{transform:translate(0,0)}}
+
+/* ---------- loader ---------- */
+#loader{position:fixed;inset:0;z-index:50;background:var(--ink);display:grid;place-items:center;transition:transform 1.1s cubic-bezier(.77,0,.18,1),visibility 0s 1.2s}
+html.loaded #loader{transform:translateY(-100%);visibility:hidden}
+.ld{width:min(560px,86vw);display:grid;gap:18px}
+.ld-top{display:flex;justify-content:space-between;align-items:flex-end;font:500 11px/1 var(--fm);letter-spacing:.18em;text-transform:uppercase;color:var(--mute)}
+.ld-num{font:800 clamp(5rem,18vw,10rem)/.8 var(--fd);letter-spacing:-.01em;font-variant-numeric:tabular-nums;color:var(--bone)}
+.ld-num small{font-size:.35em;color:var(--foil);margin-left:.1em}
+.ld-bar{height:1px;background:var(--line);position:relative;overflow:hidden}
+.ld-bar i{position:absolute;inset:0;background:var(--foil);transform-origin:left;transform:scaleX(0);transition:transform .25s linear}
+#ldmsg{font:400 12px/1.4 var(--fm);color:var(--mute);letter-spacing:.06em;min-height:1.4em}
+
+/* ---------- chrome ---------- */
+.nav{position:fixed;top:0;left:0;right:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:calc(18px + env(safe-area-inset-top,0px)) var(--gut) 18px;pointer-events:none}
+.nav>*{pointer-events:auto}
+.logo{display:flex;align-items:center;gap:12px;text-decoration:none;font:800 22px/1 var(--fd);letter-spacing:.22em;text-transform:uppercase}
+.logo svg{width:30px;height:30px}
+.navlinks{display:flex;gap:clamp(14px,2.2vw,34px);font:500 11px/1 var(--fm);letter-spacing:.16em;text-transform:uppercase}
+.navlinks a{text-decoration:none;color:var(--mute);transition:color .3s;position:relative;padding:6px 0}
+.navlinks a:hover,.navlinks a.on{color:var(--bone)}
+.navlinks a.on::after{content:"";position:absolute;left:0;right:0;bottom:0;height:1px;background:var(--foil)}
+.navr{display:flex;gap:10px;align-items:center}
+.pill{white-space:nowrap;font:500 11px/1 var(--fm);letter-spacing:.14em;text-transform:uppercase;color:var(--bone);background:rgba(10,15,28,.5);border:1px solid var(--line2);border-radius:999px;padding:11px 16px;cursor:pointer;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);text-decoration:none;display:inline-flex;align-items:center;gap:9px;transition:border-color .3s,background .3s}
+.pill:hover{border-color:var(--foil)}
+.pill.solid{background:var(--bone);color:var(--ink);border-color:var(--bone)}
+.pill.solid:hover{background:var(--foil2);border-color:var(--foil2)}
+.bars{display:inline-flex;gap:2px;align-items:flex-end;height:10px}
+.bars i{width:2px;height:3px;background:currentColor;transition:height .3s}
+.snd-on .bars i{animation:eq .9s ease-in-out infinite}
+.snd-on .bars i:nth-child(2){animation-delay:-.3s}.snd-on .bars i:nth-child(3){animation-delay:-.6s}.snd-on .bars i:nth-child(4){animation-delay:-.15s}
+@keyframes eq{0%,100%{height:3px}50%{height:10px}}
+
+.hud{position:fixed;z-index:20;font:400 10.5px/1.5 var(--fm);letter-spacing:.14em;text-transform:uppercase;color:var(--mute);pointer-events:none;font-variant-numeric:tabular-nums}
+.hud b{color:var(--bone);font-weight:500}
+.hud-bl{left:var(--gut);bottom:calc(20px + env(safe-area-inset-bottom,0px))}
+.hud-br{right:var(--gut);bottom:calc(20px + env(safe-area-inset-bottom,0px));text-align:right}
+.hud .k{color:var(--foil)}
+.corner{position:fixed;width:18px;height:18px;z-index:19;pointer-events:none;border-color:var(--line2);border-style:solid;border-width:0}
+.c1{top:calc(76px + env(safe-area-inset-top,0px));left:calc(var(--gut) - 8px);border-top-width:1px;border-left-width:1px}
+.c2{top:calc(76px + env(safe-area-inset-top,0px));right:calc(var(--gut) - 8px);border-top-width:1px;border-right-width:1px}
+.c3{bottom:calc(64px + env(safe-area-inset-bottom,0px));left:calc(var(--gut) - 8px);border-bottom-width:1px;border-left-width:1px}
+.c4{bottom:calc(64px + env(safe-area-inset-bottom,0px));right:calc(var(--gut) - 8px);border-bottom-width:1px;border-right-width:1px}
+
+.rail{position:fixed;right:calc(var(--gut) - 4px);top:50%;transform:translateY(-50%);z-index:20;display:flex;flex-direction:column;gap:14px;align-items:flex-end}
+.rail button{all:unset;cursor:pointer;display:flex;align-items:center;gap:10px;font:500 10px/1 var(--fm);letter-spacing:.16em;text-transform:uppercase;color:var(--dim);transition:color .3s}
+.rail button span{opacity:0;transform:translateX(6px);transition:opacity .35s,transform .35s;white-space:nowrap}
+.rail button i{display:block;width:14px;height:1px;background:currentColor;transition:width .4s cubic-bezier(.2,.8,.2,1)}
+.rail button:hover span,.rail button:focus-visible span{opacity:1;transform:none}
+.rail button.on{color:var(--bone)}
+.rail button.on i{width:34px;background:var(--foil)}
+.rail button:focus-visible{outline:1px solid var(--foil);outline-offset:4px}
+
+/* ---------- cursor ---------- */
+#cur,#cur2{position:fixed;left:0;top:0;z-index:60;pointer-events:none;border-radius:50%;transform:translate(-100px,-100px)}
+#cur{width:6px;height:6px;margin:-3px 0 0 -3px;background:var(--bone)}
+#cur2{width:38px;height:38px;margin:-19px 0 0 -19px;border:1px solid rgba(232,235,240,.45);transition:width .3s,height .3s,margin .3s,border-color .3s,background .3s}
+#cur2.big{width:74px;height:74px;margin:-37px 0 0 -37px;border-color:var(--foil);background:rgba(217,166,70,.08)}
+@media (hover:none),(pointer:coarse){#cur,#cur2{display:none}}
+
+/* ---------- content ---------- */
+main{position:relative;z-index:3;pointer-events:none}
+main a,main button,main input,main label,main form{pointer-events:auto}
+.chap{position:relative;padding-inline:var(--gut)}
+.sticky{position:sticky;top:0;height:100vh;height:100svh;display:flex;align-items:center}
+.eyebrow{font:500 11px/1.4 var(--fm);letter-spacing:.2em;text-transform:uppercase;color:var(--foil);margin:0 0 22px;display:flex;gap:12px;align-items:center}
+.eyebrow::before{content:"";width:28px;height:1px;background:currentColor}
+.h2{font:800 clamp(2.6rem,5.6vw,6rem)/.88 var(--fd);text-transform:uppercase;letter-spacing:-.005em;margin:0 0 24px;text-wrap:balance}
+.lede{font-size:clamp(1rem,1.2vw,1.18rem);color:#c3cad6;max-width:34em;margin:0;text-wrap:pretty}
+.foil{color:var(--foil2);background:linear-gradient(100deg,#a8792b 0%,#f5d68c 30%,#d9a646 55%,#fff0c2 72%,#b88636 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;background-size:220% 100%;animation:foil 7s ease-in-out infinite}
+@keyframes foil{0%,100%{background-position:0% 0}50%{background-position:100% 0}}
+.stroke{-webkit-text-stroke:1px rgba(232,235,240,.75);color:transparent}
+
+.btn{display:inline-flex;align-items:center;gap:12px;font:500 12px/1 var(--fm);letter-spacing:.16em;text-transform:uppercase;text-decoration:none;color:var(--ink);background:var(--bone);padding:17px 24px;border-radius:999px;border:1px solid var(--bone);transition:background .3s,color .3s,border-color .3s;cursor:pointer}
+.btn:hover{background:var(--foil2);border-color:var(--foil2)}
+.btn.ghost{background:transparent;color:var(--bone);border-color:var(--line2)}
+.btn.ghost:hover{border-color:var(--foil);color:var(--foil2)}
+.btn svg{width:14px;height:14px}
+a:focus-visible,button:focus-visible,input:focus-visible{outline:1px solid var(--foil);outline-offset:3px}
+
+/* reveal */
+html.js .rv{opacity:0;transform:translateY(34px);transition:opacity 1.1s cubic-bezier(.2,.7,.2,1),transform 1.1s cubic-bezier(.2,.7,.2,1)}
+html.js .rv.in{opacity:1;transform:none}
+.rv.d1{transition-delay:.1s!important}.rv.d2{transition-delay:.2s!important}.rv.d3{transition-delay:.3s!important}
+
+/* hero */
+#s-hero{min-height:100vh;min-height:100svh;display:flex;align-items:flex-end;padding-block:120px 110px}
+.hero-inner{max-width:min(760px,100%)}
+.hero-title{font:900 clamp(3.4rem,8.6vw,9.6rem)/.84 var(--fd);text-transform:uppercase;margin:0 0 30px;letter-spacing:-.008em}
+.hero-title .ln{display:block;overflow:hidden;padding-bottom:.04em}
+.hero-title .ln>span{display:inline-block;transition:transform 1.3s cubic-bezier(.16,1,.3,1)}
+html.js:not(.ready) .hero-title .ln>span{transform:translateY(105%)}
+.hero-title .ln:nth-child(2)>span{transition-delay:.08s}.hero-title .ln:nth-child(3)>span{transition-delay:.16s}
+.hero-fade{transition:opacity 1.2s .5s ease,transform 1.2s .5s cubic-bezier(.16,1,.3,1)}
+html.js:not(.ready) .hero-fade{opacity:0;transform:translateY(20px)}
+.hero-cta{display:flex;flex-wrap:wrap;gap:12px;margin-top:34px}
+.scroll-cue{position:absolute;left:50%;bottom:28px;transform:translateX(-50%);font:500 10px/1 var(--fm);letter-spacing:.22em;text-transform:uppercase;color:var(--mute);display:flex;flex-direction:column;align-items:center;gap:12px}
+.scroll-cue i{display:block;width:1px;height:44px;background:linear-gradient(var(--foil),transparent);animation:cue 2.2s cubic-bezier(.6,0,.2,1) infinite;transform-origin:top}
+@keyframes cue{0%{transform:scaleY(0)}50%{transform:scaleY(1)}100%{transform:scaleY(1);opacity:0}}
+
+/* manifesto */
+#s-manifesto{min-height:170vh;display:flex;flex-direction:column;justify-content:center;padding-block:22vh 18vh;gap:12vh}
+.mani{font:700 clamp(2rem,4.5vw,4.6rem)/1.02 var(--fd);text-transform:uppercase;max-width:15em;margin:0 auto;text-align:center;text-wrap:balance;letter-spacing:.002em}
+.mani .w{color:rgba(232,235,240,.16);transition:color .5s}
+.mani .w.lit{color:var(--bone)}
+.mani .w.lit.gold{color:var(--foil2)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:0;max-width:1180px;width:100%;margin:0 auto;border-top:1px solid var(--line)}
+.stat{padding:26px 22px 0;border-left:1px solid var(--line)}
+.stat:first-child{border-left:0;padding-left:0}
+.stat .n{font:800 clamp(3rem,5.4vw,5.4rem)/.9 var(--fd);font-variant-numeric:tabular-nums;display:block}
+.stat .n sup{font-size:.36em;color:var(--foil);vertical-align:top;margin-left:4px;position:relative;top:.3em}
+.stat .l{font:400 11px/1.5 var(--fm);letter-spacing:.14em;text-transform:uppercase;color:var(--mute);margin-top:12px;display:block}
+
+/* forge */
+#s-forge{height:320vh}
+#s-forge .h2{font-size:clamp(2.4rem,4.4vw,4.6rem)}
+#s-forge .steps li{padding:11px 0}
+.col{max-width:520px}
+.steps{list-style:none;margin:36px 0 0;padding:0;display:grid;gap:0;border-top:1px solid var(--line)}
+.steps li{display:grid;grid-template-columns:42px 1fr auto;gap:14px;align-items:baseline;padding:14px 0;border-bottom:1px solid var(--line);color:var(--dim);transition:color .5s}
+.steps li .no{font:500 11px/1 var(--fm);letter-spacing:.1em}
+.steps li .t{font:700 1.35rem/1.1 var(--fd);text-transform:uppercase;letter-spacing:.02em}
+.steps li .d{grid-column:2/4;font-size:.9rem;line-height:1.5;max-height:0;overflow:hidden;opacity:0;transition:max-height .6s ease,opacity .6s ease,margin .6s}
+.steps li .ok{font:500 10px/1 var(--fm);letter-spacing:.14em;text-transform:uppercase}
+.steps li.done{color:var(--mute)}
+.steps li.done .ok{color:var(--foil)}
+.steps li.cur{color:var(--bone)}
+.steps li.cur .d{max-height:6em;opacity:1;margin-top:6px;color:#c3cad6}
+.steps li.cur .no{color:var(--foil)}
+.meter{margin-top:26px;display:flex;align-items:center;gap:16px;font:500 11px/1 var(--fm);letter-spacing:.16em;text-transform:uppercase;color:var(--mute)}
+.meter .trk{flex:1;height:2px;background:var(--line);position:relative}
+.meter .trk i{position:absolute;left:0;top:0;bottom:0;background:var(--foil);width:0}
+.meter b{color:var(--bone);font-weight:500;min-width:4ch;text-align:right;font-variant-numeric:tabular-nums}
+
+/* specs */
+#s-specs{min-height:150vh;display:flex;align-items:center;justify-content:flex-end;padding-block:20vh}
+.specs{max-width:560px;width:100%}
+.shipname{font:900 clamp(4rem,10vw,10rem)/.8 var(--fd);text-transform:uppercase;margin:0 0 8px;letter-spacing:-.01em}
+.shipcls{font:500 12px/1.4 var(--fm);letter-spacing:.2em;text-transform:uppercase;color:var(--mute);margin:0 0 36px}
+.sgrid{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--line)}
+.sgrid div{padding:18px 0 16px;border-bottom:1px solid var(--line)}
+.sgrid div:nth-child(odd){padding-right:18px;border-right:1px solid var(--line)}
+.sgrid div:nth-child(even){padding-left:22px}
+.sgrid dt{font:400 10.5px/1.4 var(--fm);letter-spacing:.16em;text-transform:uppercase;color:var(--mute);margin-bottom:6px}
+.sgrid dd{margin:0;font:700 clamp(1.8rem,2.6vw,2.5rem)/1 var(--fd);font-variant-numeric:tabular-nums}
+.sgrid dd small{font:500 .42em/1 var(--fm);letter-spacing:.1em;color:var(--mute);margin-left:6px;text-transform:uppercase}
+
+/* launch */
+#s-launch{height:380vh}
+.launch{width:100%;display:grid;grid-template-rows:auto 1fr auto;height:100%;padding-block:120px 90px}
+.phase{font:500 12px/1.4 var(--fm);letter-spacing:.2em;text-transform:uppercase;color:var(--foil);min-height:1.4em}
+.count{font:900 clamp(4.5rem,12.5vw,13rem)/.8 var(--fd);letter-spacing:-.02em;font-variant-numeric:tabular-nums;margin:14px 0 0;white-space:nowrap}
+.count .u{color:var(--dim)}
+.readouts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-top:1px solid var(--line);max-width:1000px}
+.readouts div{padding:16px 16px 0 0}
+.readouts div+div{padding-left:16px;border-left:1px solid var(--line)}
+.readouts dt{font:400 10.5px/1.4 var(--fm);letter-spacing:.16em;text-transform:uppercase;color:var(--mute)}
+.readouts dd{margin:6px 0 0;font:700 clamp(1.6rem,2.8vw,2.6rem)/1 var(--fd);font-variant-numeric:tabular-nums;white-space:nowrap}
+.readouts dd small{font:500 .4em/1 var(--fm);letter-spacing:.1em;color:var(--mute);margin-left:4px}
+.thr{height:2px;background:var(--line);margin-top:10px;position:relative}
+.thr i{position:absolute;left:0;top:0;bottom:0;background:var(--foil);width:0}
+
+/* system */
+#s-system{min-height:150vh;display:flex;align-items:center;padding-block:20vh}
+.lightline{margin-top:34px;display:flex;gap:18px;align-items:center;font:500 11px/1.5 var(--fm);letter-spacing:.14em;text-transform:uppercase;color:var(--mute);max-width:520px}
+.lightline b{color:var(--bone);font:800 2.4rem/1 var(--fd);letter-spacing:0}
+.lightline i{flex:1;height:1px;background:linear-gradient(90deg,var(--foil2),rgba(156,194,255,.25));position:relative}
+
+/* explore */
+#s-explore{height:420vh}
+.ex{width:100%;display:grid;grid-template-columns:minmax(0,440px) 1fr;gap:40px;align-items:center}
+.plist{list-style:none;margin:0 0 30px;padding:0;display:flex;flex-wrap:wrap;gap:6px}
+.plist button{all:unset;cursor:pointer;font:500 10.5px/1 var(--fm);letter-spacing:.14em;text-transform:uppercase;color:var(--mute);border:1px solid var(--line);border-radius:999px;padding:9px 12px;transition:all .3s;display:inline-flex;gap:8px}
+.plist button em{font-style:normal;color:var(--dim)}
+.plist button:hover{color:var(--bone);border-color:var(--line2)}
+.plist button.on{color:var(--ink);background:var(--bone);border-color:var(--bone)}
+.plist button.on em{color:#6b5320}
+.plist button:focus-visible{outline:1px solid var(--foil);outline-offset:2px}
+.card{position:relative}
+.pnum{font:500 11px/1 var(--fm);letter-spacing:.2em;color:var(--foil);text-transform:uppercase}
+.pname{font:900 clamp(4.2rem,9vw,8.6rem)/.8 var(--fd);text-transform:uppercase;margin:14px 0 18px;letter-spacing:-.01em}
+.pline{color:#c3cad6;margin:0 0 26px;max-width:32em;min-height:4.8em}
+.pgrid{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line)}
+.pgrid div{padding:14px 12px 12px 0;border-bottom:1px solid var(--line)}
+.pgrid div:not(:nth-child(3n+1)){padding-left:14px;border-left:1px solid var(--line)}
+.pgrid dt{font:400 10px/1.4 var(--fm);letter-spacing:.14em;text-transform:uppercase;color:var(--mute);margin-bottom:6px}
+.pgrid dd{margin:0;font:700 1.5rem/1 var(--fd);font-variant-numeric:tabular-nums;white-space:nowrap}
+.pmis{margin-top:22px;display:flex;gap:14px;align-items:center;font:500 11px/1.5 var(--fm);letter-spacing:.12em;text-transform:uppercase;color:var(--mute)}
+.pmis b{color:var(--bone);font-weight:500}
+.tag{font:500 10px/1 var(--fm);letter-spacing:.14em;text-transform:uppercase;padding:6px 9px;border-radius:4px;border:1px solid currentColor;white-space:nowrap}
+.tag.go{color:#7fe0a8}.tag.man{color:var(--foil2)}.tag.des{color:var(--ice)}.tag.con{color:var(--mute)}
+.card.swap .pname,.card.swap .pline,.card.swap .pgrid{animation:swap .7s cubic-bezier(.16,1,.3,1)}
+@keyframes swap{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+.exhint{margin-top:26px;font:400 10.5px/1.5 var(--fm);letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+
+.plabels{position:fixed;inset:0;z-index:2;pointer-events:none;overflow:hidden;transition:opacity .6s}
+.plabel{position:absolute;left:0;top:0;pointer-events:auto;cursor:pointer;background:none;border:0;padding:0 0 0 14px;color:var(--mute);font:500 10px/1 var(--fm);letter-spacing:.16em;text-transform:uppercase;white-space:nowrap;transition:color .3s,opacity .4s;will-change:transform}
+.plabel::before{content:"";position:absolute;left:0;top:50%;width:8px;height:1px;background:currentColor}
+.plabel:hover,.plabel.on{color:var(--foil2)}
+
+/* missions */
+#s-missions{min-height:170vh;display:flex;align-items:center;justify-content:flex-end;padding-block:20vh}
+.mis{max-width:640px;width:100%}
+.mlist{list-style:none;margin:30px 0 0;padding:0;border-top:1px solid var(--line)}
+.mlist li{display:grid;grid-template-columns:70px 1fr auto;gap:18px;align-items:center;padding:18px 0;border-bottom:1px solid var(--line);transition:background .3s,padding .3s}
+.mlist li:hover{background:linear-gradient(90deg,rgba(217,166,70,.07),transparent)}
+.mlist .yr{font:800 1.7rem/1 var(--fd);color:var(--mute);font-variant-numeric:tabular-nums}
+.mlist .nm{font:700 1.3rem/1.1 var(--fd);text-transform:uppercase;letter-spacing:.03em}
+.mlist .ds{display:block;font-size:.88rem;color:var(--mute);margin-top:4px}
+
+/* cta */
+#s-cta{min-height:130vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding-block:20vh 8vh}
+.cta-t{font:900 clamp(3.6rem,11vw,11.5rem)/.82 var(--fd);text-transform:uppercase;margin:0 0 28px;letter-spacing:-.01em}
+.form{display:flex;gap:8px;margin:36px auto 0;max-width:520px;width:100%;background:rgba(10,15,28,.6);border:1px solid var(--line2);border-radius:999px;padding:6px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.form input{flex:1;min-width:0;background:transparent;border:0;color:var(--bone);font:400 15px/1 var(--fb);padding:0 18px;outline:none}
+.form input::placeholder{color:var(--dim)}
+.form .btn{padding:15px 20px}
+.formmsg{min-height:1.6em;margin-top:14px;font:400 12px/1.5 var(--fm);letter-spacing:.08em;color:var(--mute)}
+.pass{margin:28px auto 0;width:min(520px,100%);display:grid;grid-template-columns:1fr auto;text-align:left;background:linear-gradient(135deg,#e8ebf0,#c9ced8);color:var(--ink);border-radius:14px;overflow:hidden;animation:swap .8s cubic-bezier(.16,1,.3,1)}
+.pass .a{padding:20px 22px;display:grid;gap:14px}
+.pass .b{padding:20px 22px;border-left:2px dashed rgba(4,6,12,.25);display:grid;place-items:center;font:900 2.4rem/.9 var(--fd);text-transform:uppercase;writing-mode:vertical-rl;letter-spacing:.06em;background:var(--foil)}
+.pass small{display:block;font:500 9.5px/1.3 var(--fm);letter-spacing:.16em;text-transform:uppercase;opacity:.6}
+.pass strong{font:800 1.5rem/1 var(--fd);text-transform:uppercase}
+.pass .row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+footer{position:relative;z-index:3;padding:40px var(--gut) calc(28px + env(safe-area-inset-bottom,0px));display:flex;flex-wrap:wrap;gap:16px 40px;justify-content:space-between;border-top:1px solid var(--line);font:400 11px/1.6 var(--fm);letter-spacing:.1em;text-transform:uppercase;color:var(--dim);background:linear-gradient(transparent,rgba(4,6,12,.9) 40%)}
+footer a{color:var(--mute);text-decoration:none}
+footer a:hover{color:var(--bone)}
+
+@media (max-width:900px){
+  .navlinks{display:none}
+  .rail{display:none}
+  .stats{grid-template-columns:1fr 1fr}
+  .stat:nth-child(3){border-left:0;padding-left:0}
+  .stat{padding-bottom:22px}
+  .ex{grid-template-columns:1fr}
+  .readouts{grid-template-columns:1fr 1fr}
+  .readouts div:nth-child(3){padding-left:0;border-left:0}
+  .readouts div{padding-bottom:12px}
+  #scrim::before,#scrim::after{background:linear-gradient(180deg,rgba(4,6,12,.1),rgba(4,6,12,.75) 55%,rgba(4,6,12,.9))!important}
+  body[data-side] #scrim::before{opacity:1}
+  body[data-side] #scrim::after{opacity:0}
+  #s-specs,#s-missions{justify-content:flex-start}
+  .sticky{align-items:flex-end;padding-bottom:70px}
+  .hud-br{display:none}
+  .corner{display:none}
+  .pgrid{grid-template-columns:1fr 1fr}
+  .pgrid div:not(:nth-child(3n+1)){padding-left:0;border-left:0}
+  .pgrid div:nth-child(even){padding-left:12px;border-left:1px solid var(--line)}
+  .pline{min-height:0}
+  .launch{padding-block:100px 70px}
+}
+@media (max-width:520px){
+  #sndl{display:none}
+  .navr .pill{padding:10px 13px}
+  .logo{font-size:18px;letter-spacing:.16em}
+  .pname{font-size:3.4rem;margin:8px 0 10px}
+  .pline{font-size:.92rem;margin-bottom:14px}
+  .exhint{display:none}
+  .plist{margin-bottom:16px}
+  .plist button{padding:7px 10px}
+  .pgrid dd{font-size:1.2rem}
+  .pgrid div{padding-block:9px 8px}
+  .pmis{margin-top:12px}
+  .mlist li{grid-template-columns:52px 1fr}
+  .mlist .tag{grid-column:2;justify-self:start}
+  .hero-cta .btn{padding:15px 18px}
+  .pass{grid-template-columns:1fr}
+  .pass .b{writing-mode:horizontal-tb;border-left:0;border-top:2px dashed rgba(4,6,12,.25);padding:12px}
+}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  #grain,.foil,.scroll-cue i{animation:none}
+  html.js .rv{opacity:1;transform:none}
+}
+</style>
+
+<canvas id="gl" aria-hidden="true"></canvas>
+<div id="scrim"></div>
+<div id="vig"></div>
+<div id="grain"></div>
+<div class="plabels" id="plabels" aria-hidden="true"></div>
+<div id="cur"></div><div id="cur2"></div>
+
+<div id="loader" role="status" aria-live="polite">
+  <div class="ld">
+    <div class="ld-top"><span>Aphelion · Flight Dynamics</span><span>Pre-flight</span></div>
+    <div class="ld-num"><span id="ldn">000</span><small>%</small></div>
+    <div class="ld-bar"><i id="ldb"></i></div>
+    <div id="ldmsg">Calibrating star catalogue</div>
+  </div>
+</div>
+
+<header class="nav">
+  <a class="logo" href="#s-hero" aria-label="Aphelion — back to top">
+    <svg viewBox="0 0 40 40" fill="none" aria-hidden="true"><circle cx="15" cy="20" r="5" fill="#f3cf7a"/><ellipse cx="20" cy="20" rx="17" ry="9" stroke="#e8ebf0" stroke-width="1.4" transform="rotate(-18 20 20)"/><circle cx="36" cy="14.6" r="2.6" fill="#e8ebf0"/></svg>
+    Aphelion
+  </a>
+  <nav class="navlinks" aria-label="Chapters">
+    <a href="#s-manifesto" data-nav="1">Agency</a>
+    <a href="#s-forge" data-nav="2">Shipyard</a>
+    <a href="#s-launch" data-nav="4">Launch</a>
+    <a href="#s-explore" data-nav="6">Planets</a>
+    <a href="#s-missions" data-nav="7">Manifest</a>
+  </nav>
+  <div class="navr">
+    <button class="pill" id="snd" type="button" aria-pressed="false" aria-label="Ambient sound"><span class="bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span id="sndl">Sound off</span></button>
+    <a class="pill solid" href="#s-cta">Join the crew</a>
+  </div>
+</header>
+
+<div class="corner c1"></div><div class="corner c2"></div><div class="corner c3"></div><div class="corner c4"></div>
+<div class="hud hud-bl">MET <b id="met">T+00:00:00</b><br>Sector <b id="sector">Low Earth Orbit</b></div>
+<div class="hud hud-br"><span class="k">●</span> Tracking <b id="tgt">Earth · Sol III</b><br>X <b id="hx">0</b> Y <b id="hy">0</b> Z <b id="hz">0</b> · V <b id="hv">0.0</b> km/s</div>
+<nav class="rail" id="rail" aria-label="Scroll progress"></nav>
+
+<main>
+  <section id="s-hero" class="chap" data-side="left" data-sector="Low Earth Orbit" data-label="Orbit" data-track="Earth · Sol III">
+    <div class="hero-inner">
+      <p class="eyebrow hero-fade">Aphelion Interplanetary Agency · Est. 2019</p>
+      <h1 class="hero-title"><span class="ln"><span>Built in orbit.</span></span><span class="ln"><span>Bound for</span></span><span class="ln"><span class="foil">everywhere.</span></span></h1>
+      <p class="lede hero-fade">We design, weld and fly reusable starships from a shipyard 408&nbsp;km above the Pacific — and we're taking them to every world that circles the Sun.</p>
+      <div class="hero-cta hero-fade">
+        <a class="btn" href="#s-forge">Tour the shipyard <svg viewBox="0 0 16 16" fill="none"><path d="M8 2v12M3 9l5 5 5-5" stroke="currentColor" stroke-width="1.5"/></svg></a>
+        <a class="btn ghost" href="#s-explore">Survey the planets</a>
+      </div>
+    </div>
+    <div class="scroll-cue hero-fade" aria-hidden="true">Scroll to begin ascent<i></i></div>
+  </section>
+
+  <section id="s-manifesto" class="chap" data-side="center" data-sector="LEO · 408 km" data-label="Agency" data-track="Earth · Sol III">
+    <p class="mani" id="mani">Every rocket in history was <span data-g>thrown away</span> after one flight. We build ships that come home, refuel in orbit and leave again — because the solar system isn't a <span data-g>destination.</span> It's a <span data-g>commute.</span></p>
+    <div class="stats">
+      <div class="stat rv"><span class="n" data-count="142">142</span><span class="l">Orbital launches</span></div>
+      <div class="stat rv d1"><span class="n" data-count="97.9" data-dec="1">97.9<sup>%</sup></span><span class="l">Booster recovery rate</span></div>
+      <div class="stat rv d2"><span class="n" data-count="11">11</span><span class="l">Crewed flights</span></div>
+      <div class="stat rv d3"><span class="n" data-count="8">8</span><span class="l">Worlds surveyed</span></div>
+    </div>
+  </section>
+
+  <section id="s-forge" class="chap" data-side="left" data-sector="Anchor Shipyard" data-label="Shipyard" data-track="APH-1 Meridian">
+    <div class="sticky">
+      <div class="col">
+        <p class="eyebrow">Chapter 02 — The Forge</p>
+        <h2 class="h2">Assembled 400&nbsp;km above the weather.</h2>
+        <p class="lede">No launch loads, no wind shear, no gravity sag. Anchor Shipyard stacks a Meridian-class starship in 19 days.</p>
+        <ol class="steps" id="steps">
+          <li><span class="no">01</span><span class="t">Hull stack</span><span class="ok">Queued</span><span class="d">Sixteen rings of 304L stainless steel, laser-welded in microgravity.</span></li>
+          <li><span class="no">02</span><span class="t">Heat shield</span><span class="ok">Queued</span><span class="d">18,000 hexagonal ceramic tiles rated to 1,650&nbsp;°C on the windward side.</span></li>
+          <li><span class="no">03</span><span class="t">Aero surfaces</span><span class="ok">Queued</span><span class="d">Four electro-actuated flaps steer the belly-flop through thick atmospheres.</span></li>
+          <li><span class="no">04</span><span class="t">Propulsion</span><span class="ok">Queued</span><span class="d">Six Helix-V full-flow methalox engines — three sea-level, three vacuum.</span></li>
+          <li><span class="no">05</span><span class="t">Crew module</span><span class="ok">Queued</span><span class="d">1,000&nbsp;m³ of pressurised volume under the nose. Room for forty.</span></li>
+        </ol>
+        <div class="meter">Assembly <span class="trk"><i id="asmbar"></i></span><b id="asmpct">0%</b></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="s-specs" class="chap" data-side="right" data-sector="Anchor Shipyard · Bay 2" data-label="Starship" data-track="APH-1 Meridian">
+    <div class="specs">
+      <p class="eyebrow rv">Flight article 07</p>
+      <h2 class="shipname rv">Meridian</h2>
+      <p class="shipcls rv">APH-1 · Fully reusable interplanetary starship</p>
+      <dl class="sgrid rv">
+        <div><dt>Height</dt><dd>52<small>m</small></dd></div>
+        <div><dt>Diameter</dt><dd>9<small>m</small></dd></div>
+        <div><dt>Vacuum thrust</dt><dd>14.7<small>MN</small></dd></div>
+        <div><dt>Propellant</dt><dd>1,500<small>t CH₄/LOX</small></dd></div>
+        <div><dt>Payload, reusable</dt><dd>150<small>t</small></dd></div>
+        <div><dt>Crew</dt><dd>40<small>seats</small></dd></div>
+      </dl>
+    </div>
+  </section>
+
+  <section id="s-launch" class="chap" data-side="left" data-sector="Trans-Solar Injection" data-label="Launch" data-track="APH-1 Meridian">
+    <div class="sticky">
+      <div class="launch">
+        <div>
+          <p class="eyebrow">Chapter 03 — Departure</p>
+          <div class="phase" id="phase">Terminal count · all stations go</div>
+        </div>
+        <div style="align-self:center"><div class="count" id="count"><span class="u">T–</span>10</div></div>
+        <dl class="readouts">
+          <div><dt>Velocity</dt><dd><span id="rvel">0.00</span><small>km/s</small></dd></div>
+          <div><dt>Range from Earth</dt><dd><span id="rrng">0</span><small>km</small></dd></div>
+          <div><dt>Throttle</dt><dd><span id="rthr">0</span><small>%</small></dd><div class="thr"><i id="thrbar"></i></div></div>
+          <div><dt>Crew aboard</dt><dd>12<small>/ 40</small></dd></div>
+        </dl>
+      </div>
+    </div>
+  </section>
+
+  <section id="s-system" class="chap" data-side="left" data-sector="Heliocentric Space" data-label="System" data-track="Sol">
+    <div class="col">
+      <p class="eyebrow rv">Chapter 04 — The Neighbourhood</p>
+      <h2 class="h2 rv">Eight worlds. One ship to reach them all.</h2>
+      <p class="lede rv">From Mercury's scorched iron to Neptune's supersonic winds, 4.5 billion kilometres of real estate — and every Meridian carries enough propellant to get anywhere in it after one refuelling in orbit.</p>
+      <div class="lightline rv"><span>Sunlight to Neptune</span><i></i><b>4 h 10 m</b></div>
+    </div>
+  </section>
+
+  <section id="s-explore" class="chap" data-side="left" data-sector="Survey" data-label="Planets" data-track="Mercury">
+    <div class="sticky">
+      <div class="ex">
+        <div>
+          <p class="eyebrow">Planetary survey · Scroll or choose</p>
+          <ul class="plist" id="plist"></ul>
+          <div class="card" id="card">
+            <div class="pnum" id="pnum">Planet I of VIII</div>
+            <h2 class="pname" id="pname">Mercury</h2>
+            <p class="pline" id="pline"></p>
+            <dl class="pgrid" id="pgrid"></dl>
+            <div class="pmis" id="pmis"></div>
+          </div>
+          <p class="exhint">Click any world in the sky to fly there</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="s-missions" class="chap" data-side="right" data-sector="Flight Manifest" data-label="Manifest" data-track="Sol">
+    <div class="mis">
+      <p class="eyebrow rv">Chapter 05 — Flight manifest</p>
+      <h2 class="h2 rv">The next thirty years, booked.</h2>
+      <ul class="mlist">
+        <li class="rv"><span class="yr">2027</span><span><span class="nm">Anchor II</span><span class="ds">Low Earth orbit · Second assembly bay, doubling shipyard throughput</span></span><span class="tag go">In flight</span></li>
+        <li class="rv"><span class="yr">2029</span><span><span class="nm">Selene Depot</span><span class="ds">Lunar south pole · Water-ice mining and propellant depot</span></span><span class="tag man">Manifested</span></li>
+        <li class="rv"><span class="yr">2031</span><span><span class="nm">Terra Nova I</span><span class="ds">Mars, Arcadia Planitia · First crewed landing, twelve crew</span></span><span class="tag man">Manifested</span></li>
+        <li class="rv"><span class="yr">2037</span><span><span class="nm">Cloudline</span><span class="ds">Venus, 55 km altitude · Floating aerostat research outpost</span></span><span class="tag des">In design</span></li>
+        <li class="rv"><span class="yr">2039</span><span><span class="nm">Deep Drill</span><span class="ds">Europa · Ice-penetrating probe to the subsurface ocean</span></span><span class="tag des">In design</span></li>
+        <li class="rv"><span class="yr">2044</span><span><span class="nm">Titan Sailplane</span><span class="ds">Saturn system · Glider survey of the methane seas</span></span><span class="tag con">Concept</span></li>
+        <li class="rv"><span class="yr">2050</span><span><span class="nm">Triton Relay</span><span class="ds">Neptune · Deep-space communications node at 30 AU</span></span><span class="tag con">Concept</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="s-cta" class="chap" data-side="center" data-sector="Open Channel" data-label="Join" data-track="Sol">
+    <p class="eyebrow rv" style="justify-content:center">Now boarding</p>
+    <h2 class="cta-t rv">The solar system<br><span class="foil">is hiring.</span></h2>
+    <p class="lede rv" style="margin-inline:auto">Welders, flight surgeons, orbital mechanics, hydroponic farmers, poets. Put your name on the next manifest.</p>
+    <form class="form rv" id="form" novalidate>
+      <label for="email" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Email address</label>
+      <input id="email" name="email" type="email" placeholder="you@earth.sol" autocomplete="email" required>
+      <button class="btn" type="submit">Request boarding pass</button>
+    </form>
+    <div class="formmsg" id="formmsg" aria-live="polite"></div>
+    <div id="passwrap"></div>
+  </section>
+</main>
+
+<footer>
+  <span>© 2026 Aphelion Interplanetary Agency — a work of fiction</span>
+  <span>Anchor Shipyard · 408 km · 51.6° inclination</span>
+  <a href="#s-hero">Return to orbit ↑</a>
+</footer>
+
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+/* ================= helpers ================= */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const V3 = THREE.Vector3;
+const UP = new V3(0, 1, 0);
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a)); return t * t * (3 - 2 * t); };
+const easeIO = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+const wait = ms => new Promise(r => setTimeout(r, ms));
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let narrow = innerWidth < 900;
+const html = document.documentElement;
+
+/* ================= loader ================= */
+const ld = { shown: 0, target: 0 };
+const ldMsgs = ['Calibrating star catalogue', 'Spinning up reaction wheels', 'Chilling Helix-V turbopumps', 'Plotting trans-solar trajectory', 'Handing over to flight'];
+function setLoad(v, msg) { ld.target = v; if (msg) $('#ldmsg').textContent = msg; }
+(function tickLoader() {
+  ld.shown += (ld.target - ld.shown) * .12;
+  const v = Math.round(ld.shown);
+  $('#ldn').textContent = String(v).padStart(3, '0');
+  $('#ldb').style.transform = `scaleX(${ld.shown / 100})`;
+  if (!html.classList.contains('loaded')) requestAnimationFrame(tickLoader);
+})();
+
+/* ================= GLSL ================= */
+const NOISE = /* glsl */`
+vec3 mod289(vec3 x){return x-floor(x*(1./289.))*289.;}
+vec4 mod289(vec4 x){return x-floor(x*(1./289.))*289.;}
+vec4 permute(vec4 x){return mod289(((x*34.)+1.)*x);}
+vec4 taylorInvSqrt(vec4 r){return 1.79284291400159-.85373472095314*r;}
+float snoise(vec3 v){
+  const vec2 C=vec2(1./6.,1./3.);const vec4 D=vec4(0.,.5,1.,2.);
+  vec3 i=floor(v+dot(v,C.yyy));vec3 x0=v-i+dot(i,C.xxx);
+  vec3 g=step(x0.yzx,x0.xyz);vec3 l=1.-g;vec3 i1=min(g.xyz,l.zxy);vec3 i2=max(g.xyz,l.zxy);
+  vec3 x1=x0-i1+C.xxx;vec3 x2=x0-i2+C.yyy;vec3 x3=x0-D.yyy;
+  i=mod289(i);
+  vec4 p=permute(permute(permute(i.z+vec4(0.,i1.z,i2.z,1.))+i.y+vec4(0.,i1.y,i2.y,1.))+i.x+vec4(0.,i1.x,i2.x,1.));
+  float n_=.142857142857;vec3 ns=n_*D.wyz-D.xzx;
+  vec4 j=p-49.*floor(p*ns.z*ns.z);vec4 x_=floor(j*ns.z);vec4 y_=floor(j-7.*x_);
+  vec4 x=x_*ns.x+ns.yyyy;vec4 y=y_*ns.x+ns.yyyy;vec4 h=1.-abs(x)-abs(y);
+  vec4 b0=vec4(x.xy,y.xy);vec4 b1=vec4(x.zw,y.zw);
+  vec4 s0=floor(b0)*2.+1.;vec4 s1=floor(b1)*2.+1.;vec4 sh=-step(h,vec4(0.));
+  vec4 a0=b0.xzyw+s0.xzyw*sh.xxyy;vec4 a1=b1.xzyw+s1.xzyw*sh.zzww;
+  vec3 p0=vec3(a0.xy,h.x);vec3 p1=vec3(a0.zw,h.y);vec3 p2=vec3(a1.xy,h.z);vec3 p3=vec3(a1.zw,h.w);
+  vec4 norm=taylorInvSqrt(vec4(dot(p0,p0),dot(p1,p1),dot(p2,p2),dot(p3,p3)));
+  p0*=norm.x;p1*=norm.y;p2*=norm.z;p3*=norm.w;
+  vec4 m=max(.6-vec4(dot(x0,x0),dot(x1,x1),dot(x2,x2),dot(x3,x3)),0.);m=m*m;
+  return 42.*dot(m*m,vec4(dot(p0,x0),dot(p1,x1),dot(p2,x2),dot(p3,x3)));
+}
+float fbm(vec3 p){float f=0.,a=.5;for(int i=0;i<5;i++){f+=a*snoise(p);p*=2.03;a*=.5;}return f;}
+float fbm3(vec3 p){float f=0.,a=.5;for(int i=0;i<3;i++){f+=a*snoise(p);p*=2.07;a*=.5;}return f;}
+`;
+
+/* ================= renderer ================= */
+const canvas = $('#gl');
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
+} catch (e) {
+  html.classList.add('ready', 'loaded');
+  throw e;
+}
+const DPR = Math.min(devicePixelRatio, narrow ? 1.5 : 1.75);
+renderer.setPixelRatio(DPR);
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x010208);
+const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.1, 9000);
+camera.position.set(2, 3, 34);
+scene.add(camera);
+
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environmentIntensity = 0.3;
+
+const clock = new THREE.Clock();
+const uTime = { value: 0 };
+
+/* world anchors */
+const O = new V3(0, 0, 0);                 // home Earth
+const S = new V3(70, 8, -30);              // Anchor shipyard
+const C = new V3(-760, 70, -340);          // the Sun / solar system center
+const d0 = new V3().subVectors(S, O).setY(0).normalize();  // Earth → shipyard
+const travelDir = new V3().subVectors(C, S).normalize();
+const arr = new V3().subVectors(S, C).setY(0).normalize();  // system: direction we arrive from
+const E = C.clone().addScaledVector(arr, 300).add(new V3(0, 12, 0)); // arrival point
+const travelDist = S.distanceTo(E);
+const travelDirE = new V3().subVectors(E, S).normalize();
+
+/* lights */
+const sunLight = new THREE.DirectionalLight(0xfff0dc, 2.6);
+sunLight.position.copy(C); sunLight.target.position.copy(S);
+scene.add(sunLight, sunLight.target);
+const earthShine = new THREE.DirectionalLight(0x5b8cff, 0.9);
+earthShine.position.copy(O); earthShine.target.position.copy(S);
+scene.add(earthShine, earthShine.target);
+scene.add(new THREE.AmbientLight(0x1a2440, 0.35));
+
+/* ================= textures ================= */
+function dotTexture() {
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d'); const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(.25, 'rgba(255,255,255,.6)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c);
+}
+function glowTexture(stops) {
+  const c = document.createElement('canvas'); c.width = c.height = 256;
+  const g = c.getContext('2d'); const gr = g.createRadialGradient(128, 128, 0, 128, 128, 128);
+  stops.forEach(([o, col]) => gr.addColorStop(o, col)); g.fillStyle = gr; g.fillRect(0, 0, 256, 256);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+function hexTexture() {
+  const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d');
+  g.fillStyle = '#1b1d22'; g.fillRect(0, 0, 256, 256);
+  const r = 16, w = Math.sqrt(3) * r;
+  for (let row = -1; row < 12; row++) for (let col = -1; col < 10; col++) {
+    const x = col * w + (row % 2 ? w / 2 : 0), y = row * r * 1.5;
+    g.beginPath();
+    for (let k = 0; k < 6; k++) { const a = Math.PI / 6 + k * Math.PI / 3; g.lineTo(x + Math.cos(a) * (r - 1), y + Math.sin(a) * (r - 1)); }
+    g.closePath(); const s = 22 + Math.random() * 10 | 0; g.fillStyle = `rgb(${s},${s + 1},${s + 5})`; g.fill();
+    g.strokeStyle = '#08090b'; g.lineWidth = 2; g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(3, 6); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+function nameTexture() {
+  const c = document.createElement('canvas'); c.width = 160; c.height = 1024; const g = c.getContext('2d');
+  g.clearRect(0, 0, 160, 1024); g.translate(80, 512); g.rotate(-Math.PI / 2);
+  g.fillStyle = '#0d0f14'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.font = '800 118px "Big Shoulders Display", "Arial Narrow", sans-serif';
+  if (g.letterSpacing !== undefined) g.letterSpacing = '14px';
+  g.fillText('APHELION', 0, 4);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t;
+}
+const DOT = dotTexture();
+
+/* ================= background: nebula + stars ================= */
+const sky = new THREE.Group(); scene.add(sky);
+const bandN = new V3(0.35, 1, 0.25).normalize();
+{
+  const geo = new THREE.SphereGeometry(4000, 64, 32);
+  const mat = new THREE.ShaderMaterial({
+    side: THREE.BackSide, depthWrite: false,
+    uniforms: { uBand: { value: bandN } },
+    vertexShader: `varying vec3 vDir; void main(){ vDir = position; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.); }`,
+    fragmentShader: NOISE + `
+      uniform vec3 uBand; varying vec3 vDir;
+      void main(){
+        vec3 d = normalize(vDir);
+        float b = dot(d, uBand);
+        float band = exp(-b*b*9.);
+        float n = fbm(d*2.4)*.5+.5;
+        float n2 = fbm3(d*6.5+vec3(4.,1.,7.))*.5+.5;
+        vec3 col = vec3(.006,.008,.018);
+        col += band*mix(vec3(.05,.045,.08), vec3(.13,.095,.07), n2)*smoothstep(.3,.85,n)*1.2;
+        col *= 1. - band*smoothstep(.52,.72,n2)*.7;
+        col += vec3(.01,.035,.06)*pow(n,4.)*2.2;
+        col += vec3(.05,.012,.04)*pow(fbm3(d*3.1+9.)*.5+.5,5.)*2.4;
+        gl_FragColor = vec4(col,1.);
+      }`
+  });
+  sky.add(new THREE.Mesh(geo, mat));
+}
+const STAR_N = narrow ? 5000 : 9000;
+const starMat = new THREE.ShaderMaterial({
+  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  uniforms: { uTime, uPR: { value: DPR } },
+  vertexShader: `attribute float aSize; attribute vec3 aColor; attribute float aPhase;
+    uniform float uTime, uPR; varying vec3 vC; varying float vT;
+    void main(){ vec4 mv = modelViewMatrix*vec4(position,1.); gl_Position = projectionMatrix*mv;
+      float tw = .7+.3*sin(uTime*(.6+aPhase*2.4)+aPhase*50.);
+      gl_PointSize = aSize*uPR*(.85+.3*tw); vC = aColor; vT = tw; }`,
+  fragmentShader: `varying vec3 vC; varying float vT;
+    void main(){ float d = length(gl_PointCoord-.5); float a = smoothstep(.5,0.,d); a = a*a*(.4+.6*a);
+      gl_FragColor = vec4(vC*a*vT, a); }`
+});
+{
+  const pos = new Float32Array(STAR_N * 3), col = new Float32Array(STAR_N * 3), size = new Float32Array(STAR_N), ph = new Float32Array(STAR_N);
+  const temps = [[.62, .74, 1], [.8, .87, 1], [1, 1, 1], [1, .93, .8], [1, .8, .6], [1, .7, .5]];
+  const v = new V3();
+  for (let i = 0; i < STAR_N; i++) {
+    v.set(Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1).normalize();
+    if (Math.random() < .45) { v.addScaledVector(bandN, -v.dot(bandN) * (0.75 + Math.random() * .25)).normalize(); }
+    const r = 2200 + Math.random() * 1500;
+    pos.set([v.x * r, v.y * r, v.z * r], i * 3);
+    const t = temps[Math.floor(Math.pow(Math.random(), 1.4) * temps.length)];
+    const bright = Math.random() < .02 ? 2.2 : 1;
+    col.set([t[0] * bright, t[1] * bright, t[2] * bright], i * 3);
+    size[i] = 0.8 + Math.pow(Math.random(), 7) * 5.5;
+    ph[i] = Math.random();
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('aColor', new THREE.BufferAttribute(col, 3));
+  g.setAttribute('aSize', new THREE.BufferAttribute(size, 1));
+  g.setAttribute('aPhase', new THREE.BufferAttribute(ph, 1));
+  const pts = new THREE.Points(g, starMat); pts.frustumCulled = false; sky.add(pts);
+}
+
+/* ================= planets ================= */
+const planetVS = `varying vec3 vN; varying vec3 vW; varying vec3 vP;
+  void main(){ vP = normalize(position); vN = normalize(mat3(modelMatrix)*normal);
+    vec4 w = modelMatrix*vec4(position,1.); vW = w.xyz; gl_Position = projectionMatrix*viewMatrix*w; }`;
+const planetFS = NOISE + `
+  uniform float uTime, uType, uSeed, uScale, uStorm;
+  uniform vec3 uSunPos, uColA, uColB, uColC, uAtmo;
+  varying vec3 vN; varying vec3 vW; varying vec3 vP;
+  void main(){
+    vec3 L = normalize(uSunPos - vW); vec3 V = normalize(cameraPosition - vW); vec3 N = normalize(vN);
+    float ndl = dot(N, L);
+    float diff = smoothstep(-.12, 1., ndl);
+    vec3 p = vP*uScale + uSeed;
+    vec3 col; vec3 emis = vec3(0.); float spec = 0.;
+    if(uType < .5){
+      float n = fbm(p);
+      float land = smoothstep(.1,.15,n);
+      float h = fbm3(p*3.1+7.);
+      vec3 ocean = mix(vec3(.004,.02,.07), vec3(.01,.07,.16), smoothstep(-.45,.1,n));
+      vec3 ground = mix(vec3(.05,.12,.035), vec3(.30,.22,.12), smoothstep(-.25,.45,h));
+      ground = mix(ground, vec3(.5,.42,.3), smoothstep(.35,.7,h+n*.4)*.6);
+      col = mix(ocean, ground, land);
+      float ice = smoothstep(.76,.84,abs(vP.y)+h*.08);
+      col = mix(col, vec3(.85,.9,.95), ice);
+      float c = fbm(vP*3.4 + vec3(uTime*.008,0.,uTime*.004)+3.);
+      c = smoothstep(.02,.6,c);
+      vec3 H = normalize(L+V); spec = pow(max(dot(N,H),0.),70.)*(1.-land)*(1.-c)*1.1;
+      float cl = fbm3(p*6.+1.)*.5+.5; float sp = snoise(p*38.)*.5+.5; float coast = 1.-smoothstep(.15,.3,n);
+      float city = smoothstep(.55,.75,cl)*smoothstep(.62,.9,sp)*land*(1.-ice)*(.6+coast);
+      float night = smoothstep(.08,-.25,ndl);
+      emis = vec3(1.,.62,.28)*city*night*1.7*(1.-c*.85);
+      col = mix(col, vec3(.92), c*.92);
+    } else if(uType < 1.5){
+      float warp = fbm3(p*vec3(1.4,3.,1.4)+uTime*.01)*1.1;
+      float y = vP.y*uScale*2.6 + warp;
+      float b = sin(y*3.1)*.5+.5; float b2 = sin(y*7.7+1.3)*.5+.5;
+      col = mix(uColA, uColB, b); col = mix(col, uColC, b2*.55);
+      float st = uStorm*smoothstep(.16,.0,length((vP-normalize(vec3(.8,-.35,.45)))*vec3(1.,1.7,1.)));
+      col = mix(col, vec3(.55,.2,.1), st*.85);
+    } else {
+      float n = fbm(p); float n2 = fbm3(p*4.3);
+      col = mix(uColA, uColB, smoothstep(-.45,.45,n)); col = mix(col, uColC, smoothstep(.15,.7,n2)*.65);
+      float cr = smoothstep(.55,.62, fbm3(p*7.+2.)*.5+.5); col *= 1.-cr*.35;
+      col = mix(col, vec3(.9), uStorm*smoothstep(.82,.9,abs(vP.y)));
+    }
+    vec3 lit = col*(diff*1.2 + .018) + spec*vec3(1.,.93,.8) + emis;
+    float fres = pow(1.-max(dot(N,V),0.), 3.);
+    lit += uAtmo*fres*smoothstep(-.35,.55,ndl)*1.1;
+    gl_FragColor = vec4(lit,1.);
+  }`;
+function planetMat(o) {
+  return new THREE.ShaderMaterial({
+    uniforms: {
+      uTime, uType: { value: o.type }, uSeed: { value: o.seed ?? 1 }, uScale: { value: o.scale ?? 2 }, uStorm: { value: o.storm ?? 0 },
+      uSunPos: { value: C }, uColA: { value: new THREE.Color(o.a ?? '#777') }, uColB: { value: new THREE.Color(o.b ?? '#999') },
+      uColC: { value: new THREE.Color(o.c ?? '#555') }, uAtmo: { value: new THREE.Color(o.atmo ?? '#000') }
+    }, vertexShader: planetVS, fragmentShader: planetFS
+  });
+}
+function atmosphere(radius, color, strength = 1.4, scale = 1.1) {
+  const m = new THREE.Mesh(new THREE.SphereGeometry(radius * scale, 64, 48), new THREE.ShaderMaterial({
+    side: THREE.BackSide, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    uniforms: { uColor: { value: new THREE.Color(color) }, uSunPos: { value: C }, uK: { value: 1 / scale }, uStr: { value: strength } },
+    vertexShader: `varying vec3 vN; varying vec3 vWN; varying vec3 vW;
+      void main(){ vN = normalize(normalMatrix*normal); vWN = normalize(mat3(modelMatrix)*normal);
+        vec4 w = modelMatrix*vec4(position,1.); vW = w.xyz; gl_Position = projectionMatrix*viewMatrix*w; }`,
+    fragmentShader: `uniform vec3 uColor, uSunPos; uniform float uK, uStr; varying vec3 vN; varying vec3 vWN; varying vec3 vW;
+      void main(){ float edge = sqrt(1.-uK*uK);
+        float i = pow(clamp(-vN.z/edge,0.,1.), 2.6);
+        float s = smoothstep(-.45,.6, dot(vWN, normalize(uSunPos-vW)));
+        gl_FragColor = vec4(uColor*i*s*uStr, 1.); }`
+  }));
+  return m;
+}
+
+/* ---- Home Earth ---- */
+const earthTilt = new THREE.Group(); earthTilt.rotation.z = 0.41; earthTilt.rotation.x = 0.15; scene.add(earthTilt);
+const earth = new THREE.Mesh(new THREE.SphereGeometry(10, 160, 120), planetMat({ type: 0, seed: 1.7, scale: 1.55, atmo: '#4d8dff' }));
+earth.rotation.y = 2.2;
+earthTilt.add(earth);
+earthTilt.add(atmosphere(10, '#5b9bff', 1.6, 1.09));
+const moon = new THREE.Mesh(new THREE.SphereGeometry(2.3, 64, 48), planetMat({ type: 2, seed: 4.2, scale: 2.6, a: '#3f3e3d', b: '#8c8a86', c: '#5a5856' }));
+moon.position.set(-34, 12, -52); scene.add(moon);
+
+/* orbital traffic around Earth */
+const SAT_N = 520;
+const sats = [];
+const satGeo = new THREE.BufferGeometry();
+const satPos = new Float32Array(SAT_N * 3);
+for (let i = 0; i < SAT_N; i++) {
+  const shell = Math.random();
+  sats.push({ r: shell < .7 ? 10.7 + Math.random() * .8 : 12 + Math.random() * 3.5, inc: (Math.random() - .5) * 2.2, node: Math.random() * Math.PI * 2, ph: Math.random() * Math.PI * 2, sp: (.05 + Math.random() * .05) * (Math.random() < .5 ? 1 : -1) });
+}
+satGeo.setAttribute('position', new THREE.BufferAttribute(satPos, 3));
+const satPts = new THREE.Points(satGeo, new THREE.PointsMaterial({ size: .16, map: DOT, color: new THREE.Color(1.6, 1.35, .9), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+satPts.frustumCulled = false;
+earthTilt.add(satPts);
+function updateSats(t) {
+  const q = new THREE.Quaternion(), e = new THREE.Euler(), v = new V3();
+  for (let i = 0; i < SAT_N; i++) {
+    const s = sats[i]; const a = s.ph + t * s.sp;
+    v.set(Math.cos(a) * s.r, 0, Math.sin(a) * s.r);
+    e.set(s.inc, s.node, 0); q.setFromEuler(e); v.applyQuaternion(q);
+    satPos[i * 3] = v.x; satPos[i * 3 + 1] = v.y; satPos[i * 3 + 2] = v.z;
+  }
+  satGeo.attributes.position.needsUpdate = true;
+}
+/* orbit rings around Earth (HUD) */
+for (const [r, inc, node] of [[13.5, .35, .2], [15.5, -.5, 1.4], [12.3, .9, 2.4]]) {
+  const pts = []; for (let i = 0; i <= 200; i++) { const a = i / 200 * Math.PI * 2; pts.push(new V3(Math.cos(a) * r, 0, Math.sin(a) * r)); }
+  const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0x9cc2ff, transparent: true, opacity: .1, depthWrite: false }));
+  l.rotation.set(inc, node, 0); earthTilt.add(l);
+}
+
+/* ================= The Sun + solar system ================= */
+const system = new THREE.Group(); system.position.copy(C); scene.add(system);
+const sun = new THREE.Mesh(new THREE.SphereGeometry(10, 96, 64), new THREE.ShaderMaterial({
+  uniforms: { uTime },
+  vertexShader: planetVS,
+  fragmentShader: NOISE + `uniform float uTime; varying vec3 vN; varying vec3 vW; varying vec3 vP;
+    void main(){ float n = fbm(vP*3.2 + vec3(0.,uTime*.04,uTime*.02)); float n2 = fbm3(vP*10. - uTime*.07);
+      float t = n*.65 + n2*.45;
+      vec3 col = mix(vec3(1.,.28,.03), vec3(1.,.82,.42), smoothstep(-.45,.55,t));
+      col = mix(col, vec3(1.,.97,.86), smoothstep(.35,.8,t));
+      float f = dot(normalize(vN), normalize(cameraPosition-vW));
+      col *= 2.6 + pow(1.-f,2.)*2.;
+      gl_FragColor = vec4(col,1.); }`
+}));
+system.add(sun);
+const coronaA = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture([[0, 'rgba(255,240,210,1)'], [.12, 'rgba(255,196,110,.85)'], [.3, 'rgba(255,120,40,.25)'], [1, 'rgba(255,80,20,0)']]), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
+coronaA.scale.setScalar(58); coronaA.material.color.setScalar(1.4); system.add(coronaA);
+const coronaB = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture([[0, 'rgba(255,200,140,.5)'], [.2, 'rgba(255,140,60,.12)'], [1, 'rgba(255,90,30,0)']]), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
+coronaB.scale.setScalar(230); coronaB.material.color.setScalar(.35); system.add(coronaB);
+
+const PLANETS = [
+  { name: 'Mercury', rn: 'I', r: .9, d: 22, type: 2, seed: 3.1, scale: 3, a: '#4a4541', b: '#9b928a', c: '#34302d', atmo: '#000000',
+    line: 'A scorched iron core in a thin rock coat. Our solar-sail tugs slingshot around it to fall toward the Sun.',
+    au: '0.39', dia: '4,879', day: '58.6 d', yr: '88 d', moons: '0', light: '3.2 min', mis: 'Helios Dive', misyr: '2033', st: 'des' },
+  { name: 'Venus', rn: 'II', r: 1.5, d: 30, type: 1, seed: 2.2, scale: 1.2, a: '#b9935a', b: '#ead6a4', c: '#a07a48', atmo: '#ffd49a',
+    line: 'The surface is 465 °C under 92 atmospheres. So we fly the clouds instead — at 55 km up, it is almost Earth-like.',
+    au: '0.72', dia: '12,104', day: '243 d', yr: '225 d', moons: '0', light: '6.0 min', mis: 'Cloudline', misyr: '2037', st: 'des' },
+  { name: 'Earth', rn: 'III', r: 1.6, d: 40, type: 0, seed: 1.7, scale: 1.55, atmo: '#4d8dff',
+    line: 'Home port. Every Meridian is stacked, fuelled and crewed at Anchor Shipyard before it leaves low orbit.',
+    au: '1.00', dia: '12,742', day: '23.9 h', yr: '365.25 d', moons: '1', light: '8.3 min', mis: 'Anchor II', misyr: '2027', st: 'go' },
+  { name: 'Mars', rn: 'IV', r: 1.15, d: 50, type: 2, seed: 5.5, scale: 2.2, storm: 1, a: '#6b2a12', b: '#c4613a', c: '#e0a070', atmo: '#ff9a6a',
+    line: 'A day almost exactly like ours under a butterscotch sky. First landing site: the buried ice sheets of Arcadia Planitia.',
+    au: '1.52', dia: '6,779', day: '24.6 h', yr: '687 d', moons: '2', light: '12.7 min', mis: 'Terra Nova I', misyr: '2031', st: 'man' },
+  { name: 'Jupiter', rn: 'V', r: 5.2, d: 72, type: 1, seed: 7.7, scale: 1.3, storm: 1, a: '#a87c58', b: '#efe2cc', c: '#7a4f33', atmo: '#e8c9a0',
+    line: 'Its radiation belts would kill an unshielded crew within hours. Beneath Europa’s ice, something may be swimming.',
+    au: '5.20', dia: '139,820', day: '9.9 h', yr: '11.9 yr', moons: '95', light: '43 min', mis: 'Deep Drill', misyr: '2039', st: 'des' },
+  { name: 'Saturn', rn: 'VI', r: 4.3, d: 95, type: 1, seed: 8.8, scale: 1.1, a: '#c3a473', b: '#efe3c0', c: '#a3855a', atmo: '#f3dfb0', ring: true,
+    line: 'Rings 280,000 km across and, on average, only about ten metres thick. Titan below them has rain, rivers and seas.',
+    au: '9.54', dia: '116,460', day: '10.7 h', yr: '29.4 yr', moons: '274', light: '1 h 19 m', mis: 'Titan Sailplane', misyr: '2044', st: 'con' },
+  { name: 'Uranus', rn: 'VII', r: 2.8, d: 116, type: 1, seed: 9.9, scale: .6, a: '#88cdd6', b: '#b4e9ee', c: '#79bcc8', atmo: '#bff4ff',
+    line: 'Knocked onto its side by an ancient collision, so each pole gets 42 years of daylight followed by 42 of night.',
+    au: '19.2', dia: '50,724', day: '17.2 h', yr: '84 yr', moons: '28', light: '2 h 40 m', mis: 'Iris Orbiter', misyr: '2046', st: 'con' },
+  { name: 'Neptune', rn: 'VIII', r: 2.7, d: 134, type: 1, seed: 11.1, scale: 1.0, a: '#2a4fc0', b: '#5b88ea', c: '#1d3794', atmo: '#7fa6ff',
+    line: 'Winds of 2,100 km/h, the fastest in the solar system, on a world that receives 1/900th of the sunlight Earth does.',
+    au: '30.1', dia: '49,244', day: '16.1 h', yr: '164.8 yr', moons: '16', light: '4 h 10 m', mis: 'Triton Relay', misyr: '2050', st: 'con' },
+];
+const pickables = [];
+PLANETS.forEach((P, k) => {
+  const holder = new THREE.Group(); system.add(holder);
+  const mesh = new THREE.Mesh(new THREE.SphereGeometry(P.r, 72, 54), planetMat(P));
+  mesh.rotation.z = k === 6 ? 1.7 : .3 * Math.sin(k * 3.1);
+  holder.add(mesh);
+  if (P.atmo !== '#000000') holder.add(atmosphere(P.r, P.atmo, P.type === 0 ? 1.6 : .9, 1.12));
+  if (P.ring) {
+    const rg = new THREE.RingGeometry(P.r * 1.3, P.r * 2.35, 160, 1);
+    const rm = new THREE.ShaderMaterial({
+      transparent: true, side: THREE.DoubleSide, depthWrite: false,
+      uniforms: { uIn: { value: P.r * 1.3 }, uOut: { value: P.r * 2.35 } },
+      vertexShader: `varying vec3 vL; void main(){ vL = position; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.); }`,
+      fragmentShader: `uniform float uIn,uOut; varying vec3 vL;
+        float h(float x){return fract(sin(x*127.1)*43758.5453);}
+        void main(){ float t = (length(vL.xy)-uIn)/(uOut-uIn);
+          float b = .55+.45*sin(t*44.)*sin(t*17.+1.)+.12*sin(t*97.);
+          float gap = smoothstep(.56,.575,t)*(1.-smoothstep(.62,.635,t));
+          float a = clamp(b,0.,1.)*smoothstep(0.,.08,t)*smoothstep(1.,.9,t)*(1.-gap*.9)*.85;
+          vec3 col = mix(vec3(.62,.52,.38), vec3(.95,.88,.72), b);
+          gl_FragColor = vec4(col*.9, a); }`
+    });
+    const ring = new THREE.Mesh(rg, rm); ring.rotation.x = -Math.PI / 2 + .45; ring.rotation.y = .15; holder.add(ring);
+  }
+  const orbit = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(Array.from({ length: 256 }, (_, i) => { const a = i / 256 * Math.PI * 2; return new V3(Math.cos(a) * P.d, 0, Math.sin(a) * P.d); })),
+    new THREE.LineBasicMaterial({ color: 0x9cc2ff, transparent: true, opacity: .13, depthWrite: false }));
+  system.add(orbit);
+  P.holder = holder; P.mesh = mesh; P.orbit = orbit; P.k = k;
+  P.ang = 2.4 + k * .62; P.w = .012 * Math.pow(40 / P.d, 1.5);
+  mesh.userData.k = k; pickables.push(mesh);
+});
+/* asteroid belt */
+{
+  const N = narrow ? 1400 : 2600, pos = new Float32Array(N * 3);
+  for (let i = 0; i < N; i++) { const a = Math.random() * Math.PI * 2, r = 58 + (Math.random() + Math.random() - 1) * 4.5; pos.set([Math.cos(a) * r, (Math.random() - .5) * 1.8, Math.sin(a) * r], i * 3); }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  var belt = new THREE.Points(g, new THREE.PointsMaterial({ size: .45, map: DOT, color: 0x9c8f7d, transparent: true, depthWrite: false }));
+  system.add(belt);
+}
+
+/* ================= Starship ================= */
+function makeShip({ blueprint = false } = {}) {
+  const model = new THREE.Group();
+  const parts = []; const bellMats = [];
+  const lineBase = new THREE.LineBasicMaterial({ color: new THREE.Color(.45, .78, 1.7), transparent: true, opacity: .9, blending: THREE.AdditiveBlending, depthWrite: false });
+  const steel = new THREE.MeshStandardMaterial({ color: 0xc2c6cc, metalness: .85, roughness: .52, envMapIntensity: .45 });
+  const dark = new THREE.MeshStandardMaterial({ color: 0xffffff, map: hexTexture(), metalness: .15, roughness: .72 });
+  const bellM = new THREE.MeshStandardMaterial({ color: 0x3a3c42, metalness: .85, roughness: .38, side: THREE.DoubleSide, emissive: new THREE.Color(1, .45, .15), emissiveIntensity: 0 });
+  const part = (start, offset, rot = [0, 0, 0], pos = [0, 0, 0], prot = [0, 0, 0]) => {
+    const g = new THREE.Group(); g.position.set(...pos); g.rotation.set(...prot);
+    g.userData = { start, offset: new V3(...offset), rot: new V3(...rot), home: g.position.clone(), homeRot: new V3(...prot), mats: [], lines: [] };
+    model.add(g); parts.push(g); return g;
+  };
+  const mesh = (g, geo, mat, pos, rot) => {
+    const m = new THREE.Mesh(geo, mat.clone()); if (pos) m.position.set(...pos); if (rot) m.rotation.set(...rot);
+    if (mat === bellM) bellMats.push(m.material);
+    g.add(m); g.userData.mats.push(m.material); return m;
+  };
+  const lines = (g, geo, pos, rot, thr = 1) => {
+    if (!blueprint) return;
+    const l = new THREE.LineSegments(new THREE.EdgesGeometry(geo, thr), lineBase.clone());
+    if (pos) l.position.set(...pos); if (rot) l.rotation.set(...rot);
+    g.add(l); g.userData.lines.push(l.material);
+  };
+  const R = 1.2, H = 8.6;
+  // 01 hull
+  const hull = part(0, [0, -16, 0], [0, 1.2, 0]);
+  const bodyPts = [new THREE.Vector2(0, 0), new THREE.Vector2(R, 0), new THREE.Vector2(R, H), new THREE.Vector2(0, H)];
+  mesh(hull, new THREE.LatheGeometry(bodyPts, 72), steel);
+  lines(hull, new THREE.LatheGeometry([new THREE.Vector2(R, 0), new THREE.Vector2(R, H)], 16));
+  for (let y = .95; y < H; y += .95) {
+    mesh(hull, new THREE.TorusGeometry(R + .004, .012, 6, 72), steel, [0, y, 0], [Math.PI / 2, 0, 0]);
+    lines(hull, new THREE.TorusGeometry(R + .01, .001, 2, 24), [0, y, 0], [Math.PI / 2, 0, 0]);
+  }
+  mesh(hull, new THREE.CylinderGeometry(R, R * .94, .5, 64, 1, true), steel, [0, -.25, 0]);
+  const nm = new THREE.MeshStandardMaterial({ map: nameTexture(), transparent: true, metalness: .2, roughness: .6 });
+  mesh(hull, new THREE.CylinderGeometry(R + .008, R + .008, 6.2, 24, 1, true, -.36, .72), nm, [0, 4.4, 0]);
+  // 02 heat shield (windward = -Z half)
+  const shield = part(.17, [0, 0, -9], [0, 0, .3]);
+  mesh(shield, new THREE.CylinderGeometry(R + .02, R + .02, H - .1, 48, 1, true, Math.PI / 2, Math.PI), dark, [0, H / 2, 0]);
+  lines(shield, new THREE.CylinderGeometry(R + .03, R + .03, H - .1, 10, 6, true, Math.PI / 2, Math.PI), [0, H / 2, 0]);
+  // 03 flaps
+  const flapShape = (w, h1, h2) => { const s = new THREE.Shape(); s.moveTo(0, 0); s.lineTo(w, h1 * .2); s.lineTo(w, h1); s.lineTo(0, h2); s.closePath(); return s; };
+  const fwd = new THREE.ExtrudeGeometry(flapShape(.95, 1.35, 1.85), { depth: .07, bevelEnabled: false });
+  const aft = new THREE.ExtrudeGeometry(flapShape(1.55, 2.2, 3.0), { depth: .09, bevelEnabled: false });
+  const flapMat = dark;
+  for (const s of [1, -1]) {
+    const f1 = part(.36, [s * 6, 2, 0], [0, 0, s * .6], [s * (R - .05), 9.05, -.35], [0, s > 0 ? 0 : Math.PI, 0]);
+    mesh(f1, fwd, flapMat); lines(f1, fwd, null, null, 10);
+    const f2 = part(.4, [s * 7, -2, 0], [0, 0, -s * .5], [s * (R - .05), .45, -.35], [0, s > 0 ? 0 : Math.PI, 0]);
+    mesh(f2, aft, flapMat); lines(f2, aft, null, null, 10);
+  }
+  // 04 engines
+  const bellPts = []; for (let i = 0; i <= 14; i++) { const t = i / 14; bellPts.push(new THREE.Vector2(.12 + .24 * Math.pow(t, 1.6), -t * 1.0)); }
+  const bellGeo = new THREE.LatheGeometry(bellPts, 36);
+  const bellLow = new THREE.LatheGeometry(bellPts.filter((_, i) => i % 3 === 0), 10);
+  const eng = [];
+  for (let i = 0; i < 3; i++) eng.push({ a: i * Math.PI * 2 / 3, r: .42, s: .85 });
+  for (let i = 0; i < 3; i++) eng.push({ a: Math.PI / 3 + i * Math.PI * 2 / 3, r: .84, s: 1.12 });
+  eng.forEach((e, i) => {
+    const g = part(.56 + i * .025, [Math.cos(e.a) * 3, -6 - i * .8, Math.sin(e.a) * 3], [.5, 0, .4], [Math.cos(e.a) * e.r, -.05, Math.sin(e.a) * e.r]);
+    g.scale.setScalar(e.s);
+    mesh(g, bellGeo, bellM); lines(g, bellLow, null, null, 1);
+  });
+  // 05 nose / crew module
+  const nose = part(.76, [0, 14, 0], [0, -1, 0]);
+  const nosePts = []; for (let i = 0; i <= 28; i++) { const t = i / 28; nosePts.push(new THREE.Vector2(R * Math.pow(1 - Math.pow(t, 2.1), .55), H + t * 3.7)); }
+  nosePts.push(new THREE.Vector2(0, H + 3.7));
+  mesh(nose, new THREE.LatheGeometry(nosePts, 72), steel);
+  lines(nose, new THREE.LatheGeometry(nosePts.filter((_, i) => i % 4 === 0), 16));
+  mesh(nose, new THREE.CylinderGeometry(R + .02, R * .6, 2.6, 40, 1, true, Math.PI / 2, Math.PI), dark, [0, H + 1.3, 0]);
+  // windows (crew)
+  const winMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, 1.6, .9) });
+  for (let i = 0; i < 5; i++) mesh(nose, new THREE.BoxGeometry(.13, .07, .02), winMat, [-.36 + i * .18, H + .9, R * .93 + .02]);
+
+  // exhaust plume
+  const plumeU = { uTime, uPower: { value: 0 } };
+  const plumeVS = `varying vec2 vUv; varying vec3 vNV; varying vec3 vVP;
+    void main(){ vUv = uv; vNV = normalize(normalMatrix*normal); vec4 mv = modelViewMatrix*vec4(position,1.); vVP = mv.xyz; gl_Position = projectionMatrix*mv; }`;
+  const plumeFS = (core) => NOISE + `uniform float uTime, uPower; varying vec2 vUv; varying vec3 vNV; varying vec3 vVP;
+    void main(){ float t = vUv.y; float f = abs(dot(normalize(vNV), normalize(-vVP)));
+      float n = snoise(vec3(vUv.x*7., t*5.-uTime*10., uTime*1.3))*.5+.5;
+      float a = pow(1.-t, ${core ? '2.2' : '1.5'})*f*f*(.5+.5*n);
+      vec3 c = mix(vec3(.7,.8,1.), vec3(1.,.55,.2), smoothstep(.02,.35,t));
+      c = mix(c, vec3(1.,.22,.07), smoothstep(.35,1.,t));
+      ${core ? 'float dia = smoothstep(.55,1.,sin(t*38.-uTime*3.)*.5+.5)*(1.-t)*.9; a += dia*f;' : ''}
+      gl_FragColor = vec4(c*a*uPower*${core ? '4.2' : '2.2'}, 1.); }`;
+  const mkPlume = (r, h, core) => {
+    const m = new THREE.Mesh(new THREE.ConeGeometry(r, h, 40, 20, true), new THREE.ShaderMaterial({ uniforms: plumeU, vertexShader: plumeVS, fragmentShader: plumeFS(core), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
+    m.rotation.x = Math.PI; m.position.y = -1.05 - h / 2; m.frustumCulled = false; return m;
+  };
+  const plume = new THREE.Group(); plume.add(mkPlume(1.15, 18, false), mkPlume(.72, 7.5, true));
+  plume.visible = false;
+  model.add(plume);
+  const engLight = new THREE.PointLight(0xff8a3a, 0, 0, 2); engLight.position.y = -3; model.add(engLight);
+
+  const setAssembly = (P) => {
+    for (const g of parts) {
+      const u = g.userData; const e = easeIO(clamp((P - u.start) / .2));
+      g.position.copy(u.home).addScaledVector(u.offset, 1 - e);
+      g.rotation.set(u.homeRot.x + u.rot.x * (1 - e), u.homeRot.y + u.rot.y * (1 - e), u.homeRot.z + u.rot.z * (1 - e));
+      const op = smooth(.12, .8, e);
+      for (const m of u.mats) { m.opacity = op; m.transparent = op < .999; m.depthWrite = op > .5; }
+      g.children.forEach(c => { if (c.isMesh) c.visible = op > .01; });
+      const lo = blueprint ? (e < 1 ? .85 * (1 - smooth(.6, 1, e)) + (e > 0 ? .15 * (1 - e) : 0) : 0) : 0;
+      for (const l of u.lines) l.opacity = lo;
+      g.children.forEach(c => { if (c.isLineSegments) c.visible = lo > .005; });
+    }
+  };
+  const setPower = (p, t) => {
+    const flick = p > 0 ? p * (.92 + .08 * Math.sin(t * 60) * Math.sin(t * 37)) : 0;
+    plumeU.uPower.value = flick; plume.visible = p > .005;
+    bellMats.forEach(m => m.emissiveIntensity = p * 1.8);
+    engLight.intensity = p * 120;
+  };
+  model.position.y = -5.9;
+  return { model, parts, setAssembly, setPower };
+}
+
+/* forge ship */
+const shipPivot = new THREE.Group(); shipPivot.position.copy(S); scene.add(shipPivot);
+let ship;
+/* hero ship orbiting Earth */
+const heroPivot = new THREE.Group(); scene.add(heroPivot);
+let heroShip;
+
+/* ================= Shipyard ================= */
+const yard = new THREE.Group(); yard.position.copy(S); scene.add(yard);
+const navLights = [];
+{
+  const truss = new THREE.MeshStandardMaterial({ color: 0x5d6270, metalness: .75, roughness: .45 });
+  const beams = [];
+  const beam = (a, b, t = .12) => beams.push([new V3(...a), new V3(...b), t]);
+  // tower
+  const tx = -6.5, tz = -3.5, w = 1.6;
+  const corners = [[tx - w / 2, tz - w / 2], [tx + w / 2, tz - w / 2], [tx + w / 2, tz + w / 2], [tx - w / 2, tz + w / 2]];
+  corners.forEach(([x, z]) => beam([x, -9, z], [x, 13, z], .16));
+  for (let y = -9; y <= 13; y += 2) {
+    for (let i = 0; i < 4; i++) { const [x1, z1] = corners[i], [x2, z2] = corners[(i + 1) % 4]; beam([x1, y, z1], [x2, y, z2], .08); if (y < 13) beam([x1, y, z1], [x2, y + 2, z2], .05); }
+  }
+  // arms
+  for (const y of [-3, 3.2]) { beam([tx + w / 2, y, tz + w / 2], [-1.6, y, -.8], .14); beam([tx + w / 2, y + .6, tz - w / 2], [-1.6, y, -.8], .07); }
+  // spine to habitat
+  beam([tx, -7, tz], [-40, -12, -18], .3); beam([tx, -5, tz], [-40, -10, -18], .15);
+  for (let k = 0; k < 8; k++) { const t = k / 7; beam([lerp(tx, -40, t), lerp(-7, -12, t), lerp(tz, -18, t)], [lerp(tx, -40, t), lerp(-5, -10, t), lerp(tz, -18, t)], .08); }
+  const geo = new THREE.BoxGeometry(1, 1, 1);
+  const inst = new THREE.InstancedMesh(geo, truss, beams.length);
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new V3(), mid = new V3(), dir = new V3();
+  beams.forEach(([a, b, t], i) => { mid.addVectors(a, b).multiplyScalar(.5); dir.subVectors(b, a); sc.set(t, dir.length(), t); q.setFromUnitVectors(UP, dir.normalize()); m4.compose(mid, q, sc); inst.setMatrixAt(i, m4); });
+  yard.add(inst);
+  // assembly hoops
+  for (const [y, r] of [[-4.5, 7.5], [2.5, 6.4], [8.5, 5.2]]) {
+    const hoop = new THREE.Group(); hoop.position.y = y;
+    const tor = new THREE.Mesh(new THREE.TorusGeometry(r, .16, 10, 160), truss); tor.rotation.x = Math.PI / 2; hoop.add(tor);
+    for (let i = 0; i < 18; i++) {
+      const a = i / 18 * Math.PI * 2; const L = new THREE.Mesh(new THREE.BoxGeometry(.18, .1, .18), new THREE.MeshBasicMaterial({ color: new THREE.Color(1.8, 1.45, .9) }));
+      L.position.set(Math.cos(a) * r, .14, Math.sin(a) * r); hoop.add(L);
+    }
+    hoop.userData.spin = (y > 0 ? 1 : -1) * .06; yard.add(hoop); navLights.push({ hoop });
+  }
+  // platform
+  const plat = new THREE.Mesh(new THREE.CylinderGeometry(7.5, 7.5, .35, 6), truss); plat.position.y = -9.2; yard.add(plat);
+  const platEdge = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.CylinderGeometry(7.55, 7.55, .36, 6)), new THREE.LineBasicMaterial({ color: new THREE.Color(1.8, 1.3, .6) }));
+  platEdge.position.y = -9.2; yard.add(platEdge);
+  // habitat modules and solar arrays at the end of the spine
+  const hab = new THREE.MeshStandardMaterial({ color: 0xd8d6cf, metalness: .3, roughness: .55 });
+  for (let k = 0; k < 3; k++) { const m = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.4, 5, 32), hab); m.rotation.z = Math.PI / 2; m.rotation.y = .4; m.position.set(-30 - k * 5.2, -10.8 + k * .1, -14.5 - k * 1.8); yard.add(m); }
+  const pc = document.createElement('canvas'); pc.width = 128; pc.height = 256; const pg = pc.getContext('2d');
+  pg.fillStyle = '#0a1430'; pg.fillRect(0, 0, 128, 256); pg.strokeStyle = '#27407a'; pg.lineWidth = 2;
+  for (let x = 0; x <= 128; x += 16) { pg.beginPath(); pg.moveTo(x, 0); pg.lineTo(x, 256); pg.stroke(); }
+  for (let y = 0; y <= 256; y += 16) { pg.beginPath(); pg.moveTo(0, y); pg.lineTo(128, y); pg.stroke(); }
+  const ptex = new THREE.CanvasTexture(pc); ptex.colorSpace = THREE.SRGBColorSpace;
+  const panelM = new THREE.MeshStandardMaterial({ map: ptex, metalness: .6, roughness: .28, side: THREE.DoubleSide });
+  for (const s of [-1, 1]) for (let k = 0; k < 2; k++) {
+    const p = new THREE.Mesh(new THREE.PlaneGeometry(4.5, 16), panelM); p.rotation.x = -Math.PI / 2 + .5; p.rotation.z = .4;
+    p.position.set(-34 - k * 7, -11, -16 + s * 10); yard.add(p);
+  }
+  // blinking beacons
+  for (const [p, c] of [[[tx, 13.4, tz], [5, .35, .25]], [[-40, -9.3, -18], [.3, 5, .9]], [[7.5, -9.2, 0], [5, .35, .25]], [[-7.5, -9.2, 0], [.3, 5, .9]], [[0, -9.2, 7.5], [4, 4, 4]]]) {
+    const b = new THREE.Mesh(new THREE.SphereGeometry(.16, 12, 8), new THREE.MeshBasicMaterial({ color: new THREE.Color(...c) }));
+    b.position.set(...p); yard.add(b); navLights.push({ b, ph: Math.random() * 6 });
+  }
+  const key = new THREE.PointLight(0xffc38a, 16, 0, 2); key.position.set(-4.5, 6, 5); yard.add(key);
+  const rim = new THREE.PointLight(0x7fb0ff, 70, 0, 2); rim.position.set(5, 11, -6); yard.add(rim);
+  const low = new THREE.PointLight(0xffa060, 22, 0, 2); low.position.set(3, -7, 3); yard.add(low);
+}
+
+/* ================= Warp streaks ================= */
+const WARP_N = 520;
+const warpGeo = new THREE.BufferGeometry();
+const warpPos = new Float32Array(WARP_N * 6), warpCol = new Float32Array(WARP_N * 6);
+const warpData = [];
+for (let i = 0; i < WARP_N; i++) {
+  const a = Math.random() * Math.PI * 2, r = 4 + Math.pow(Math.random(), .6) * 40;
+  warpData.push({ x: Math.cos(a) * r, y: Math.sin(a) * r, z: (Math.random() - .5) * 400, l: 6 + Math.random() * 22 });
+  const c = Math.random() < .3 ? [1.4, 1.15, .7] : [.7, .9, 1.5];
+  warpCol.set([...c, 0, 0, 0], i * 6);
+}
+warpGeo.setAttribute('position', new THREE.BufferAttribute(warpPos, 3));
+warpGeo.setAttribute('color', new THREE.BufferAttribute(warpCol, 3));
+const warpMat = new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
+const warp = new THREE.LineSegments(warpGeo, warpMat); warp.frustumCulled = false; scene.add(warp);
+warp.quaternion.setFromUnitVectors(new V3(0, 0, -1), travelDirE);
+function updateWarp(amount, dt) {
+  warpMat.opacity = amount; warp.visible = amount > .003;
+  if (!warp.visible) return;
+  warp.position.copy(camera.position);
+  const sp = 380 * amount * dt;
+  for (let i = 0; i < WARP_N; i++) {
+    const d = warpData[i]; d.z += sp; if (d.z > 200) d.z -= 400;
+    const L = d.l * (0.4 + amount * 2.2);
+    warpPos.set([d.x, d.y, d.z, d.x, d.y, d.z - L], i * 6);
+  }
+  warpGeo.attributes.position.needsUpdate = true;
+}
+
+/* ================= post ================= */
+const rt = new THREE.WebGLRenderTarget(innerWidth * DPR, innerHeight * DPR, { type: THREE.HalfFloatType, samples: narrow ? 0 : 4 });
+const composer = new EffectComposer(renderer, rt);
+composer.setPixelRatio(DPR); composer.setSize(innerWidth, innerHeight);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth / 2, innerHeight / 2), .72, .5, .86);
+composer.addPass(bloom);
+const finalPass = new ShaderPass({
+  uniforms: { tDiffuse: { value: null }, uCA: { value: .003 }, uVig: { value: .55 } },
+  vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.); }`,
+  fragmentShader: `uniform sampler2D tDiffuse; uniform float uCA, uVig; varying vec2 vUv;
+    void main(){ vec2 c = vUv-.5; float d = length(c); vec2 o = c*uCA*d*2.;
+      vec3 col = vec3(texture2D(tDiffuse, vUv+o).r, texture2D(tDiffuse, vUv).g, texture2D(tDiffuse, vUv-o).b);
+      col *= 1. - uVig*smoothstep(.3,.95,d);
+      gl_FragColor = vec4(col,1.); }`
+});
+composer.addPass(finalPass);
+composer.addPass(new OutputPass());
+
+/* ================= sections / scroll ================= */
+const sections = $$('main > section');
+const N = sections.length;
+let tops = [], heights = [], vh = innerHeight;
+function measure() {
+  vh = innerHeight;
+  tops = sections.map(s => s.getBoundingClientRect().top + scrollY);
+  heights = sections.map(s => s.offsetHeight);
+}
+function sectionState(sy) {
+  let i = 0; for (let k = 0; k < N; k++) if (sy >= tops[k] - 2) i = k;
+  const h = heights[i];
+  return { i, p: clamp((sy - tops[i]) / h), sp: clamp((sy - tops[i]) / Math.max(1, h - vh)) };
+}
+
+/* ship trajectory as a pure function of launch progress */
+const qUp = new THREE.Quaternion();
+const qTravel = new THREE.Quaternion().setFromUnitVectors(UP, travelDirE);
+function shipStateAt(sp) {
+  const move = easeIO(clamp((sp - .3) / .6));
+  const lift = smooth(.24, .34, sp) * 1.5;
+  const pos = S.clone().addScaledVector(travelDirE, move * travelDist + lift);
+  const quat = new THREE.Quaternion().slerpQuaternions(qUp, qTravel, easeIO(smooth(.25, .42, sp)));
+  const ign = smooth(.17, .27, sp);
+  const power = ign * (1 - .65 * smooth(.86, .95, sp)) * (1 - smooth(.95, 1, sp));
+  const warpAmt = smooth(.46, .6, sp) * (1 - smooth(.8, .92, sp));
+  return { pos, quat, power, warp: warpAmt, move };
+}
+function launchReadouts(sp) {
+  let vel = 0; if (sp > .27) vel = lerp(0, 11.2, smooth(.27, .45, sp)) + lerp(0, 52, smooth(.42, .7, sp)) - lerp(0, 28, smooth(.82, 1, sp));
+  const range = Math.round(Math.pow(smooth(.28, 1, sp), 2.2) * 78_340_000);
+  const thr = Math.round(100 * smooth(.17, .27, sp) * (1 - .7 * smooth(.86, .95, sp)) * (1 - smooth(.95, 1, sp)));
+  return { vel, range, thr };
+}
+
+const tmpA = new V3(), tmpB = new V3();
+function around(center, base, ang, R, h) { return center.clone().addScaledVector(base.clone().applyAxisAngle(UP, ang), R).add(new V3(0, h, 0)); }
+function focusCam(k) {
+  const P = PLANETS[k]; const w = P.mesh.getWorldPosition(new V3());
+  const out = C.clone().sub(w).setY(0).normalize().applyAxisAngle(UP, -1.0);
+  const dist = P.r * (P.ring ? 6.4 : P.r > 3 ? 5.2 : 5.8);
+  return { pos: w.clone().addScaledVector(out, dist).add(new V3(0, P.r * 1.35, 0)), tgt: w, off: .2 };
+}
+const cams = [
+  (p) => ({ pos: new V3(2 - 5 * p, 3 + 5 * p, 34 - 5 * p), tgt: new V3(0, .5 + p, 0), off: .21 }),
+  (p) => ({ pos: new V3(-12 + 8 * p, 17 + 3 * p, 26 - 6 * p), tgt: new V3(0, 7, 0), off: 0 }),
+  (p, sp) => ({ pos: around(S, d0, -.55 + sp * 1.1, 36 - sp * 8, 4 + sp * 2), tgt: S.clone().add(new V3(0, .5, 0)), off: .2 }),
+  (p) => ({ pos: around(S, d0, .9 + p * .6, 26, -1 + p * 3), tgt: S.clone().add(new V3(0, .8, 0)), off: -.2 }),
+  (p, sp) => {
+    const st = shipStateAt(sp);
+    const side = new V3().crossVectors(travelDirE, UP).normalize();
+    const early = { pos: around(S, d0, 1.9, 27, 0), tgt: S.clone() };
+    const chase = { pos: st.pos.clone().addScaledVector(travelDirE, -36).addScaledVector(UP, 9).addScaledVector(side, 11), tgt: st.pos.clone().addScaledVector(travelDirE, 10) };
+    const k = easeIO(smooth(.27, .46, sp));
+    return { pos: early.pos.lerp(chase.pos, k), tgt: early.tgt.lerp(chase.tgt, k), off: lerp(.12, 0, k) };
+  },
+  (p) => ({ pos: around(C, arr, -.25 + p * .35, 230 - 30 * p, 105 + 15 * p), tgt: C.clone(), off: .17 }),
+  (p, sp) => {
+    const x = sp * 8, k = Math.min(7, Math.floor(x)), q = x - k;
+    const a = focusCam(k);
+    if (k < 7 && q > .7) { const b = focusCam(k + 1); const t = easeIO(smooth(.7, 1, q)); return { pos: arcLerp(a.pos, b.pos, t), tgt: arcLerp(a.tgt, b.tgt, t), off: .2 }; }
+    return a;
+  },
+  (p) => ({ pos: around(C, arr, 1.7 + p * .5, 150, 30 + 10 * p), tgt: C.clone().add(new V3(0, -4, 0)), off: -.24 }),
+  (p) => ({ pos: around(C, arr, 2.4 + p * .3, 420 + 120 * p, 330 + 60 * p), tgt: C.clone(), off: 0 }),
+];
+function arcLerp(a, b, t) {
+  const ax = a.x - C.x, az = a.z - C.z, bx = b.x - C.x, bz = b.z - C.z;
+  let aa = Math.atan2(az, ax), ba = Math.atan2(bz, bx); let d = ba - aa; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2;
+  const an = aa + d * t, r = lerp(Math.hypot(ax, az), Math.hypot(bx, bz), t);
+  return new V3(C.x + Math.cos(an) * r, lerp(a.y, b.y, t), C.z + Math.sin(an) * r);
+}
+function cameraFor(i, p, sp) {
+  const a = cams[i](p, sp);
+  if (i < N - 1) {
+    const t = easeIO(smooth(.62, 1, p));
+    if (t > 0) {
+      const b = cams[i + 1](0, 0);
+      const useArc = i >= 5;
+      a.pos = useArc ? arcLerp(a.pos, b.pos, t) : a.pos.lerp(b.pos, t);
+      a.tgt = useArc ? arcLerp(a.tgt, b.tgt, t) : a.tgt.lerp(b.tgt, t);
+      a.off = lerp(a.off, b.off, t);
+    }
+  }
+  return a;
+}
+
+/* ================= DOM: rail, planet list, labels ================= */
+const rail = $('#rail');
+sections.forEach((s, k) => {
+  const b = document.createElement('button'); b.type = 'button';
+  b.innerHTML = `<span>${String(k).padStart(2, '0')} · ${s.dataset.label}</span><i></i>`;
+  b.setAttribute('aria-label', `Go to ${s.dataset.label}`);
+  b.onclick = () => scrollTo({ top: tops[k] + (k === 6 ? 2 : 0), behavior: reduced ? 'auto' : 'smooth' });
+  rail.appendChild(b);
+});
+const railBtns = $$('button', rail);
+const plist = $('#plist'), labelsEl = $('#plabels');
+PLANETS.forEach((P, k) => {
+  const li = document.createElement('li');
+  li.innerHTML = `<button type="button" data-k="${k}"><em>${P.rn}</em>${P.name}</button>`;
+  plist.appendChild(li);
+  const lb = document.createElement('button'); lb.type = 'button'; lb.className = 'plabel'; lb.textContent = P.name; lb.dataset.k = k; lb.tabIndex = -1;
+  labelsEl.appendChild(lb); P.label = lb;
+});
+function goPlanet(k) {
+  const i = 6; const range = heights[i] - vh;
+  scrollTo({ top: tops[i] + range * ((k + .3) / 8), behavior: reduced ? 'auto' : 'smooth' });
+}
+plist.addEventListener('click', e => { const b = e.target.closest('button'); if (b) goPlanet(+b.dataset.k); });
+labelsEl.addEventListener('click', e => { const b = e.target.closest('.plabel'); if (b) goPlanet(+b.dataset.k); });
+const stLabel = { go: 'In flight', man: 'Manifested', des: 'In design', con: 'Concept' };
+let shownPlanet = -1;
+function showPlanet(k) {
+  if (k === shownPlanet) return; shownPlanet = k;
+  const P = PLANETS[k];
+  $('#pnum').textContent = `Planet ${P.rn} of VIII · ${P.au} AU from the Sun`;
+  $('#pname').textContent = P.name;
+  $('#pline').textContent = P.line;
+  $('#pgrid').innerHTML = [['Diameter', P.dia + ' km'], ['Day', P.day], ['Year', P.yr], ['Moons', P.moons], ['Sunlight delay', P.light], ['Distance', P.au + ' AU']]
+    .map(([a, b]) => `<div><dt>${a}</dt><dd>${b}</dd></div>`).join('');
+  $('#pmis').innerHTML = `<span class="tag ${P.st}">${stLabel[P.st]}</span><span>Aphelion mission · <b>${P.mis}</b> · ${P.misyr}</span>`;
+  $$('#plist button').forEach((b, j) => b.classList.toggle('on', j === k));
+  PLANETS.forEach((Q, j) => { Q.label.classList.toggle('on', j === k); Q.orbit.material.color.set(j === k ? 0xf3cf7a : 0x9cc2ff); Q.orbit.material.opacity = j === k ? .5 : .13; });
+  const card = $('#card'); card.classList.remove('swap'); void card.offsetWidth; card.classList.add('swap');
+  $('#s-explore').dataset.track = P.name;
+}
+showPlanet(0);
+
+/* manifesto words */
+const mani = $('#mani');
+{
+  const frag = document.createDocumentFragment();
+  mani.childNodes.forEach(n => {
+    const gold = n.nodeType === 1 && n.hasAttribute('data-g');
+    (n.textContent.split(/(\s+)/)).forEach(w => {
+      if (!w) return;
+      if (/^\s+$/.test(w)) { frag.appendChild(document.createTextNode(w)); return; }
+      const s = document.createElement('span'); s.className = 'w' + (gold ? ' gold' : ''); s.textContent = w; frag.appendChild(s);
+    });
+  });
+  mani.innerHTML = ''; mani.appendChild(frag);
+}
+const maniWords = $$('.w', mani);
+
+/* reveals + counters */
+const io = new IntersectionObserver(es => es.forEach(e => {
+  if (!e.isIntersecting) return; e.target.classList.add('in'); io.unobserve(e.target);
+  const n = e.target.querySelector('[data-count]'); if (n && !reduced) countUp(n);
+}), { threshold: .15 });
+$$('.rv').forEach(el => io.observe(el));
+function countUp(el) {
+  const to = +el.dataset.count, dec = +(el.dataset.dec || 0), sup = el.querySelector('sup')?.outerHTML || '';
+  const t0 = performance.now();
+  (function f(now) { const t = clamp((now - t0) / 1600); const v = to * (1 - Math.pow(1 - t, 4));
+    el.innerHTML = v.toFixed(dec) + sup; if (t < 1) requestAnimationFrame(f); })(t0);
+}
+
+/* steps */
+const steps = $$('#steps li');
+const stepStarts = [0, .17, .36, .56, .76];
+
+/* ================= input ================= */
+const mouse = { x: 0, y: 0, sx: 0, sy: 0, cx: -100, cy: -100, rx: -100, ry: -100 };
+addEventListener('pointermove', e => {
+  mouse.x = e.clientX / innerWidth * 2 - 1; mouse.y = -(e.clientY / innerHeight * 2 - 1);
+  mouse.cx = e.clientX; mouse.cy = e.clientY;
+}, { passive: true });
+const cur = $('#cur'), cur2 = $('#cur2');
+document.addEventListener('pointerover', e => { cur2.classList.toggle('big', !!e.target.closest('a,button,input,.plabel')); });
+const ray = new THREE.Raycaster();
+let hoverK = -1;
+canvas.addEventListener('click', () => { if (hoverK >= 0) goPlanet(hoverK); });
+
+/* ================= audio ================= */
+let audio = null;
+function initAudio() {
+  const A = new (window.AudioContext || window.webkitAudioContext)();
+  const master = A.createGain(); master.gain.value = 0; master.connect(A.destination);
+  const lp = A.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 520; lp.Q.value = .7; lp.connect(master);
+  [[55, 'sawtooth', .05], [55.4, 'sawtooth', .05], [82.4, 'sine', .07], [110.2, 'triangle', .02], [164.8, 'sine', .012]].forEach(([f, t, g]) => {
+    const o = A.createOscillator(); o.type = t; o.frequency.value = f; const gg = A.createGain(); gg.gain.value = g;
+    const lfo = A.createOscillator(); lfo.frequency.value = .05 + Math.random() * .1; const lg = A.createGain(); lg.gain.value = g * .6; lfo.connect(lg); lg.connect(gg.gain); lfo.start();
+    o.connect(gg); gg.connect(lp); o.start();
+  });
+  const len = A.sampleRate * 2, buf = A.createBuffer(1, len, A.sampleRate), d = buf.getChannelData(0);
+  let last = 0; for (let i = 0; i < len; i++) { last = (last + .02 * (Math.random() * 2 - 1)) / 1.02; d[i] = last * 3.5; }
+  const noise = A.createBufferSource(); noise.buffer = buf; noise.loop = true;
+  const nf = A.createBiquadFilter(); nf.type = 'lowpass'; nf.frequency.value = 180;
+  const rumble = A.createGain(); rumble.gain.value = 0;
+  noise.connect(nf); nf.connect(rumble); rumble.connect(master); noise.start();
+  audio = { A, master, rumble, nf, on: false };
+}
+$('#snd').addEventListener('click', () => {
+  if (!audio) initAudio();
+  audio.on = !audio.on; if (audio.A.state === 'suspended') audio.A.resume();
+  audio.master.gain.setTargetAtTime(audio.on ? .55 : 0, audio.A.currentTime, .6);
+  $('#snd').classList.toggle('snd-on', audio.on); $('#snd').setAttribute('aria-pressed', audio.on);
+  $('#sndl').textContent = audio.on ? 'Sound on' : 'Sound off';
+});
+
+/* ================= form ================= */
+$('#form').addEventListener('submit', e => {
+  e.preventDefault();
+  const v = $('#email').value.trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) { $('#formmsg').textContent = 'That address won’t reach us — check it has a name, an @ and a domain.'; return; }
+  const id = 'APH-' + Math.floor(1000 + Math.random() * 9000);
+  const seat = (Math.floor(Math.random() * 20) + 1) + 'ABCD'[Math.floor(Math.random() * 4)];
+  $('#formmsg').textContent = 'You’re on the manifest. Your boarding pass is below.';
+  $('#passwrap').innerHTML = `<div class="pass"><div class="a"><div><small>Passenger</small><strong>${v.split('@')[0].replace(/[<>&"]/g, '').slice(0, 22)}</strong></div>
+    <div class="row"><div><small>Flight</small><strong>${id}</strong></div><div><small>Gate</small><strong>Anchor 2</strong></div><div><small>Seat</small><strong>${seat}</strong></div></div>
+    <div class="row"><div><small>From</small><strong>LEO</strong></div><div><small>To</small><strong>Mars</strong></div><div><small>Departs</small><strong>2031</strong></div></div></div><div class="b">Meridian</div></div>`;
+});
+
+/* ================= resize ================= */
+function resize() {
+  narrow = innerWidth < 900;
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight); composer.setSize(innerWidth, innerHeight);
+  bloom.resolution.set(innerWidth / 2, innerHeight / 2);
+  measure();
+}
+addEventListener('resize', resize);
+
+/* ================= main loop ================= */
+let sy = scrollY, frame = 0, lastI = -1;
+const camPos = new V3().copy(camera.position), camTgt = new V3(0, .5, 0);
+let camOff = .21, fov = 42;
+const lastCam = new V3().copy(camera.position);
+const t0 = performance.now();
+const secEls = { sector: $('#sector'), tgt: $('#tgt'), met: $('#met'), hx: $('#hx'), hy: $('#hy'), hz: $('#hz'), hv: $('#hv') };
+const navA = $$('.navlinks a');
+function fmt(n) { return n.toLocaleString('en-US'); }
+
+function tick() {
+  const dt = Math.min(clock.getDelta(), .05);
+  const t = clock.elapsedTime; uTime.value = t;
+  sy = reduced ? scrollY : sy + (scrollY - sy) * (1 - Math.exp(-dt * 6.5));
+  const { i, p, sp } = sectionState(sy);
+
+  /* Earth + traffic */
+  earth.rotation.y += dt * .012;
+  updateSats(t);
+  moon.rotation.y += dt * .01;
+  heroPivot.visible = i <= 3;
+  if (heroShip) {
+    const a = t * .07 + 2.2, r = 13.8;
+    const pos = new V3(Math.cos(a) * r, Math.sin(a) * 2.5 + 1.5, Math.sin(a) * r);
+    const tan = new V3(-Math.sin(a), Math.cos(a) * .18, Math.cos(a)).normalize();
+    heroPivot.position.copy(pos);
+    heroPivot.quaternion.setFromUnitVectors(UP, tan);
+  }
+
+  /* shipyard */
+  navLights.forEach(n => { if (n.hoop) n.hoop.rotation.y += n.hoop.userData.spin * dt; if (n.b) n.b.visible = Math.sin(t * 2.2 + n.ph) > .55; });
+
+  /* forge ship */
+  let st = null;
+  if (ship) {
+    const P = i < 2 ? 0 : i === 2 ? clamp(sp * 1.08) : 1;
+    ship.setAssembly(P);
+    if (i === 2) {
+      steps.forEach((li, k) => {
+        const done = P >= (stepStarts[k] + .2), cur = !done && P >= stepStarts[k] - .001 && (k === 0 || P >= stepStarts[k]);
+        li.classList.toggle('done', done); li.classList.toggle('cur', cur || (k === 0 && P < .001));
+        li.querySelector('.ok').textContent = done ? 'Locked' : cur ? 'Mating' : 'Queued';
+      });
+      $('#asmbar').style.width = (P * 100) + '%'; $('#asmpct').textContent = Math.round(P * 100) + '%';
+    }
+    st = shipStateAt(i < 4 ? 0 : i === 4 ? sp : 1);
+    shipPivot.position.copy(st.pos); shipPivot.quaternion.copy(st.quat);
+    ship.setPower(i === 4 ? st.power : 0, t);
+    shipPivot.visible = !(i >= 6);
+  }
+  const warpAmt = (i === 4 && st) ? st.warp : 0;
+  updateWarp(reduced ? warpAmt * .4 : warpAmt, dt);
+
+  /* launch UI */
+  if (i === 4) {
+    const r = launchReadouts(sp);
+    let cnt, phase;
+    if (sp < .27) { const n = Math.max(0, Math.ceil(10 * (1 - sp / .27))); cnt = `<span class="u">T–</span>${String(n).padStart(2, '0')}`; }
+    else { const secs = Math.floor(Math.pow((sp - .27) / .73, 2.4) * 86400 * 146); const d = Math.floor(secs / 86400), h = Math.floor(secs % 86400 / 3600), m = Math.floor(secs % 3600 / 60);
+      cnt = d > 0 ? `<span class="u">T+</span>${d}<span class="u">d</span>${String(h).padStart(2, '0')}<span class="u">h</span>` : `<span class="u">T+</span>${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(secs % 60).padStart(2, '0')}`; }
+    phase = sp < .12 ? 'Terminal count · all stations go' : sp < .27 ? 'Ignition sequence start · Helix-V spin-up' : sp < .44 ? 'Clear of Anchor · pitch to departure attitude' : sp < .62 ? 'Trans-solar injection burn' : sp < .86 ? 'Cruise · heliocentric transfer' : 'Arrival · orbit insertion';
+    $('#count').innerHTML = cnt; $('#phase').textContent = phase;
+    $('#rvel').textContent = r.vel.toFixed(2); $('#rrng').textContent = fmt(r.range); $('#rthr').textContent = r.thr; $('#thrbar').style.width = r.thr + '%';
+    if (audio && audio.on) { audio.rumble.gain.setTargetAtTime(st.power * .9, audio.A.currentTime, .1); audio.nf.frequency.setTargetAtTime(160 + st.power * 380, audio.A.currentTime, .2); }
+  } else if (audio && audio.on) audio.rumble.gain.setTargetAtTime(0, audio.A.currentTime, .3);
+
+  /* manifesto */
+  if (i === 1 || i === 0) {
+    const lit = Math.floor(clamp((sy - tops[1] + vh * .75) / (heights[1] * .62)) * maniWords.length);
+    maniWords.forEach((w, k) => w.classList.toggle('lit', k < lit));
+  }
+
+  /* solar system motion */
+  const sysSpeed = i === 6 ? .25 : 1;
+  PLANETS.forEach(P => { P.ang += P.w * dt * sysSpeed; P.holder.position.set(Math.cos(P.ang) * P.d, 0, Math.sin(P.ang) * P.d); P.mesh.rotation.y += dt * .08; });
+  belt.rotation.y += dt * .004;
+  if (i === 6) showPlanet(Math.min(7, Math.floor(sp * 8)));
+
+  /* camera */
+  const cam = cameraFor(i, p, sp);
+  const k = 1 - Math.exp(-dt * (i === 6 ? 5 : 8));
+  camPos.lerp(cam.pos, k); camTgt.lerp(cam.tgt, k);
+  camOff = lerp(camOff, narrow ? 0 : cam.off, k);
+  mouse.sx += (mouse.x - mouse.sx) * .05; mouse.sy += (mouse.y - mouse.sy) * .05;
+  const dist = camPos.distanceTo(camTgt);
+  const fwd = tmpA.subVectors(camTgt, camPos).normalize(); const right = tmpB.crossVectors(fwd, UP).normalize();
+  camera.position.copy(camPos).addScaledVector(right, mouse.sx * dist * .03).addScaledVector(UP, mouse.sy * dist * .02);
+  if (i === 4 && st && st.power > 0) { const sh = st.power * (1 - smooth(.4, .55, sp)) * .08 + warpAmt * .05; camera.position.add(new V3((Math.random() - .5) * sh, (Math.random() - .5) * sh, (Math.random() - .5) * sh)); }
+  camera.lookAt(camTgt);
+  const targetFov = 42 + warpAmt * 22;
+  fov += (targetFov - fov) * (1 - Math.exp(-dt * 4));
+  camera.fov = fov;
+  camera.setViewOffset(innerWidth, innerHeight, -camOff * innerWidth, 0, innerWidth, innerHeight);
+  camera.updateProjectionMatrix();
+  sky.position.copy(camera.position);
+  finalPass.uniforms.uCA.value = .0025 + warpAmt * .012;
+
+  /* planet labels + picking */
+  const showLabels = i === 5 || i === 6 || (i === 4 && p > .8) || (i === 7 && p < .3);
+  labelsEl.style.opacity = showLabels ? 1 : 0;
+  if (showLabels) {
+    PLANETS.forEach((P, k) => {
+      const w = P.mesh.getWorldPosition(tmpA); w.y += P.r * 1.2;
+      w.project(camera);
+      const vis = w.z < 1 && Math.abs(w.x) < 1.1 && Math.abs(w.y) < 1.1;
+      P.label.style.opacity = vis ? (i === 6 && k === shownPlanet ? 0 : 1) : 0;
+      P.label.style.pointerEvents = vis ? 'auto' : 'none';
+      P.label.style.transform = `translate(${(w.x * .5 + .5) * innerWidth}px, ${(-w.y * .5 + .5) * innerHeight}px)`;
+    });
+    ray.setFromCamera({ x: mouse.x, y: mouse.y }, camera);
+    const hit = ray.intersectObjects(pickables, false)[0];
+    hoverK = hit ? hit.object.userData.k : -1;
+    canvas.style.cursor = hoverK >= 0 ? 'pointer' : '';
+    cur2.classList.toggle('big', hoverK >= 0);
+  } else { hoverK = -1; canvas.style.cursor = ''; }
+
+  /* chrome */
+  if (i !== lastI) {
+    lastI = i; const s = sections[i];
+    document.body.dataset.side = s.dataset.side;
+    secEls.sector.textContent = s.dataset.sector;
+    railBtns.forEach((b, k) => b.classList.toggle('on', k === i));
+    navA.forEach(a => a.classList.toggle('on', +a.dataset.nav === i || (+a.dataset.nav === 2 && i === 3) || (+a.dataset.nav === 6 && i === 5)));
+  }
+  if ((frame++ & 3) === 0) {
+    const s = sections[i];
+    secEls.tgt.textContent = i === 6 ? PLANETS[shownPlanet].name : s.dataset.track;
+    const e = (performance.now() - t0) / 1000;
+    secEls.met.textContent = `T+${String(Math.floor(e / 3600)).padStart(2, '0')}:${String(Math.floor(e % 3600 / 60)).padStart(2, '0')}:${String(Math.floor(e % 60)).padStart(2, '0')}`;
+    secEls.hx.textContent = (camera.position.x * 640).toFixed(0); secEls.hy.textContent = (camera.position.y * 640).toFixed(0); secEls.hz.textContent = (camera.position.z * 640).toFixed(0);
+    const v = i === 4 ? launchReadouts(sp).vel : lastCam.distanceTo(camera.position) / Math.max(dt * 4, 1e-3) * .64 * .25;
+    secEls.hv.textContent = v.toFixed(1);
+    lastCam.copy(camera.position);
+  }
+
+  /* cursor */
+  mouse.rx += (mouse.cx - mouse.rx) * .18; mouse.ry += (mouse.cy - mouse.ry) * .18;
+  cur.style.transform = `translate(${mouse.cx}px,${mouse.cy}px)`; cur2.style.transform = `translate(${mouse.rx}px,${mouse.ry}px)`;
+
+  composer.render();
+  requestAnimationFrame(tick);
+}
+
+/* ================= boot ================= */
+(async function boot() {
+  setLoad(18, ldMsgs[0]);
+  await Promise.race([document.fonts.ready, wait(2500)]);
+  setLoad(42, ldMsgs[1]);
+  ship = makeShip({ blueprint: true }); ship.model.rotation.y = Math.PI; shipPivot.add(ship.model); ship.setAssembly(0);
+  heroShip = makeShip(); heroShip.model.scale.setScalar(1); heroPivot.add(heroShip.model); heroShip.setAssembly(1);
+  heroPivot.scale.setScalar(.11);
+  await wait(60);
+  setLoad(66, ldMsgs[2]);
+  measure();
+  try { renderer.compile(scene, camera); } catch (e) { }
+  setLoad(88, ldMsgs[3]);
+  updateSats(0);
+  composer.render();
+  await wait(250);
+  setLoad(100, ldMsgs[4]);
+  requestAnimationFrame(tick);
+  await wait(550);
+  html.classList.add('loaded');
+  await wait(350);
+  html.classList.add('ready');
+  addEventListener('load', measure);
+  setTimeout(measure, 1500);
+})();
+</script>
