@@ -52,10 +52,6 @@ html.loaded #loader{transform:translateY(-100%);visibility:hidden}
 .nav>*{pointer-events:auto}
 .logo{display:flex;align-items:center;gap:12px;text-decoration:none;font:800 22px/1 var(--fd);letter-spacing:.22em;text-transform:uppercase}
 .logo svg{width:30px;height:30px}
-.navlinks{display:flex;gap:clamp(14px,2.2vw,34px);font:500 11px/1 var(--fm);letter-spacing:.16em;text-transform:uppercase}
-.navlinks a{text-decoration:none;color:var(--mute);transition:color .3s;position:relative;padding:6px 0}
-.navlinks a:hover,.navlinks a.on{color:var(--bone)}
-.navlinks a.on::after{content:"";position:absolute;left:0;right:0;bottom:0;height:1px;background:var(--foil)}
 .navr{display:flex;gap:10px;align-items:center}
 .pill{white-space:nowrap;font:500 11px/1 var(--fm);letter-spacing:.14em;text-transform:uppercase;color:var(--bone);background:rgba(10,15,28,.5);border:1px solid var(--line2);border-radius:999px;padding:11px 16px;cursor:pointer;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);text-decoration:none;display:inline-flex;align-items:center;gap:9px;transition:border-color .3s,background .3s}
 .pill:hover{border-color:var(--foil)}
@@ -69,23 +65,19 @@ html.loaded #loader{transform:translateY(-100%);visibility:hidden}
 
 .hud{position:fixed;z-index:20;font:400 10.5px/1.5 var(--fm);letter-spacing:.14em;text-transform:uppercase;color:var(--mute);pointer-events:none;font-variant-numeric:tabular-nums}
 .hud b{color:var(--bone);font-weight:500}
-.hud-bl{left:var(--gut);bottom:calc(20px + env(safe-area-inset-bottom,0px))}
 .hud-br{right:var(--gut);bottom:calc(20px + env(safe-area-inset-bottom,0px));text-align:right}
 .hud .k{color:var(--foil)}
-.corner{position:fixed;width:18px;height:18px;z-index:19;pointer-events:none;border-color:var(--line2);border-style:solid;border-width:0}
-.c1{top:calc(76px + env(safe-area-inset-top,0px));left:calc(var(--gut) - 8px);border-top-width:1px;border-left-width:1px}
-.c2{top:calc(76px + env(safe-area-inset-top,0px));right:calc(var(--gut) - 8px);border-top-width:1px;border-right-width:1px}
-.c3{bottom:calc(64px + env(safe-area-inset-bottom,0px));left:calc(var(--gut) - 8px);border-bottom-width:1px;border-left-width:1px}
-.c4{bottom:calc(64px + env(safe-area-inset-bottom,0px));right:calc(var(--gut) - 8px);border-bottom-width:1px;border-right-width:1px}
 
-.rail{position:fixed;right:calc(var(--gut) - 4px);top:50%;transform:translateY(-50%);z-index:20;display:flex;flex-direction:column;gap:14px;align-items:flex-end}
-.rail button{all:unset;cursor:pointer;display:flex;align-items:center;gap:10px;font:500 10px/1 var(--fm);letter-spacing:.16em;text-transform:uppercase;color:var(--dim);transition:color .3s}
-.rail button span{opacity:0;transform:translateX(6px);transition:opacity .35s,transform .35s;white-space:nowrap}
-.rail button i{display:block;width:14px;height:1px;background:currentColor;transition:width .4s cubic-bezier(.2,.8,.2,1)}
-.rail button:hover span,.rail button:focus-visible span{opacity:1;transform:none}
-.rail button.on{color:var(--bone)}
-.rail button.on i{width:34px;background:var(--foil)}
+.rail{position:fixed;right:var(--gut);top:50%;transform:translateY(-50%);z-index:20;display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.rail button{all:unset;cursor:pointer;display:block;padding:7px 0;white-space:nowrap;font:500 10.5px/1 var(--fm);letter-spacing:.22em;text-transform:uppercase;color:var(--mute);opacity:0;transform:translateX(14px);transition:opacity .6s,transform 1s cubic-bezier(.2,.8,.2,1),color .45s;transition-delay:calc(var(--k) * 70ms),calc(var(--k) * 70ms),0s}
+.rail:not(.show){pointer-events:none}
+.rail:not(.show) button{transition-delay:0s}
+.rail.show button{opacity:1;transform:none}
+.rail b{font-weight:500}
+.rail button:hover,.rail button.on{color:var(--bone)}
+body[data-side="center"] .rail:not(:hover) button:not(.on){color:var(--dim)}
 .rail button:focus-visible{outline:1px solid var(--foil);outline-offset:4px}
+@media (prefers-reduced-motion:reduce){.rail button{transform:none;transition-delay:0s}}
 
 /* ---------- cursor ---------- */
 #cur,#cur2{position:fixed;left:0;top:0;z-index:60;pointer-events:none;border-radius:50%;transform:translate(-100px,-100px)}
@@ -182,12 +174,26 @@ html.js:not(.ready) .hero-fade{opacity:0;transform:translateY(20px)}
 .sgrid dd small{font:500 .42em/1 var(--fm);letter-spacing:.1em;color:var(--mute);margin-left:6px;text-transform:uppercase}
 
 /* launch */
-#s-launch{height:380vh}
-.launch{width:100%;display:grid;grid-template-rows:auto 1fr auto;height:100%;padding-block:120px 90px}
-.phase{font:500 12px/1.4 var(--fm);letter-spacing:.2em;text-transform:uppercase;color:var(--foil);min-height:1.4em}
+#s-launch{height:820vh}
+.launch{width:100%;display:grid;grid-template-rows:1fr auto;height:100%;padding-block:120px 36px}
+.cwrap{align-self:center;margin-left:clamp(0px,16vw,320px)}
+.count.holding{animation:holdblink 1.8s ease-in-out infinite}
+@keyframes holdblink{50%{opacity:.55}}
+.hold{margin-top:34px;max-width:440px;opacity:0;transform:translateY(14px);transition:opacity .6s,transform .9s cubic-bezier(.2,.8,.2,1)}
+.hold.on{opacity:1;transform:none}
+.hold p{margin:0 0 8px;font:800 clamp(1.4rem,2.2vw,2rem)/1.05 var(--fd);text-transform:uppercase;letter-spacing:.01em}
+.hold .hint{font:500 11px/1.5 var(--fm);letter-spacing:.2em;color:var(--mute);margin:0 0 20px}
+.chg{display:flex;align-items:center;gap:16px;font:500 11px/1 var(--fm);letter-spacing:.16em;text-transform:uppercase;color:var(--mute)}
+.chg .trk{flex:1;height:2px;background:var(--line);position:relative;overflow:hidden}
+.chg .trk i{position:absolute;inset:0;background:linear-gradient(90deg,var(--foil),var(--foil2));transform-origin:left;transform:scaleX(0)}
+.chg b{color:var(--bone);font-weight:500;min-width:4ch;text-align:right;font-variant-numeric:tabular-nums}
+.hud-br{transition:opacity .6s}
+body.in-launch .hud-br{opacity:0}
+.launch .cwrap,.launch .readouts{transition:opacity .8s,transform 1s cubic-bezier(.2,.8,.2,1)}
+.launch.flying .cwrap,.launch.flying .readouts{opacity:0;transform:translateY(-16px)}
 .count{font:900 clamp(4.5rem,12.5vw,13rem)/.8 var(--fd);letter-spacing:-.02em;font-variant-numeric:tabular-nums;margin:14px 0 0;white-space:nowrap}
 .count .u{color:var(--dim)}
-.readouts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-top:1px solid var(--line);max-width:1000px}
+.readouts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-top:1px solid var(--line);max-width:1000px;width:100%;justify-self:center}
 .readouts div{padding:16px 16px 0 0}
 .readouts div+div{padding-left:16px;border-left:1px solid var(--line)}
 .readouts dt{font:400 10.5px/1.4 var(--fm);letter-spacing:.16em;text-transform:uppercase;color:var(--mute)}
@@ -197,20 +203,26 @@ html.js:not(.ready) .hero-fade{opacity:0;transform:translateY(20px)}
 .thr i{position:absolute;left:0;top:0;bottom:0;background:var(--foil);width:0}
 
 /* system */
-#s-system{min-height:150vh;display:flex;align-items:center;padding-block:20vh}
-.lightline{margin-top:34px;display:flex;gap:18px;align-items:center;font:500 11px/1.5 var(--fm);letter-spacing:.14em;text-transform:uppercase;color:var(--mute);max-width:520px}
+#s-system{height:200vh}
+#s-system .sticky{align-items:stretch}
+.sys{width:100%;display:flex;flex-direction:column;justify-content:space-between;align-items:center;text-align:center;padding-block:clamp(84px,11vh,120px) calc(clamp(48px,8vh,96px) + env(safe-area-inset-bottom,0px))}
+.sys .eyebrow{justify-content:center;margin-bottom:14px}
+.sys .eyebrow::before{display:none}
+.sys .h2{max-width:12em;margin:0 auto 18px;font-size:clamp(2.4rem,4.8vw,5.2rem)}
+.sys .lede{max-width:36em;margin:0 auto}
+.sys>*{transition:opacity .6s ease}
+html .sys.leaving>*,html.js .sys.leaving>.rv.in{opacity:0}
+.lightline{width:min(520px,100%);display:flex;gap:18px;align-items:center;font:500 11px/1.5 var(--fm);letter-spacing:.14em;text-transform:uppercase;color:var(--mute);max-width:520px}
 .lightline b{color:var(--bone);font:800 2.4rem/1 var(--fd);letter-spacing:0}
 .lightline i{flex:1;height:1px;background:linear-gradient(90deg,var(--foil2),rgba(156,194,255,.25));position:relative}
 
 /* explore */
-#s-explore{height:420vh}
+#s-explore{height:900vh}
 .ex{width:100%;display:grid;grid-template-columns:minmax(0,440px) 1fr;gap:40px;align-items:center}
 .plist{list-style:none;margin:0 0 30px;padding:0;display:flex;flex-wrap:wrap;gap:6px}
-.plist button{all:unset;cursor:pointer;font:500 10.5px/1 var(--fm);letter-spacing:.14em;text-transform:uppercase;color:var(--mute);border:1px solid var(--line);border-radius:999px;padding:9px 12px;transition:all .3s;display:inline-flex;gap:8px}
-.plist button em{font-style:normal;color:var(--dim)}
+.plist button{all:unset;pointer-events:auto;cursor:pointer;font:500 10.5px/1 var(--fm);letter-spacing:.14em;text-transform:uppercase;color:var(--mute);border:1px solid var(--line);border-radius:999px;padding:9px 12px;transition:all .3s;display:inline-flex;gap:8px}
 .plist button:hover{color:var(--bone);border-color:var(--line2)}
 .plist button.on{color:var(--ink);background:var(--bone);border-color:var(--bone)}
-.plist button.on em{color:#6b5320}
 .plist button:focus-visible{outline:1px solid var(--foil);outline-offset:2px}
 .card{position:relative}
 .pnum{font:500 11px/1 var(--fm);letter-spacing:.2em;color:var(--foil);text-transform:uppercase}
@@ -235,6 +247,7 @@ html.js:not(.ready) .hero-fade{opacity:0;transform:translateY(20px)}
 .plabel:hover,.plabel.on{color:var(--foil2)}
 
 /* missions */
+#s-specs,#s-missions{padding-right:calc(var(--gut) + 150px)}
 #s-missions{min-height:170vh;display:flex;align-items:center;justify-content:flex-end;padding-block:20vh}
 .mis{max-width:640px;width:100%}
 .mlist{list-style:none;margin:30px 0 0;padding:0;border-top:1px solid var(--line)}
@@ -245,7 +258,9 @@ html.js:not(.ready) .hero-fade{opacity:0;transform:translateY(20px)}
 .mlist .ds{display:block;font-size:.88rem;color:var(--mute);margin-top:4px}
 
 /* cta */
-#s-cta{min-height:130vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding-block:20vh 8vh}
+#s-cta{min-height:calc(100vh - 66px);display:flex;flex-direction:column;justify-content:flex-start;align-items:center;text-align:center;padding-block:clamp(84px,9.5vh,112px) 5vh}
+#s-cta .eyebrow{margin-bottom:14px}
+.cta-foot{margin-top:auto;padding-top:4vh;width:100%}
 .cta-t{font:900 clamp(3.6rem,11vw,11.5rem)/.82 var(--fd);text-transform:uppercase;margin:0 0 28px;letter-spacing:-.01em}
 .form{display:flex;gap:8px;margin:36px auto 0;max-width:520px;width:100%;background:rgba(10,15,28,.6);border:1px solid var(--line2);border-radius:999px;padding:6px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
 .form input{flex:1;min-width:0;background:transparent;border:0;color:var(--bone);font:400 15px/1 var(--fb);padding:0 18px;outline:none}
@@ -258,12 +273,11 @@ html.js:not(.ready) .hero-fade{opacity:0;transform:translateY(20px)}
 .pass small{display:block;font:500 9.5px/1.3 var(--fm);letter-spacing:.16em;text-transform:uppercase;opacity:.6}
 .pass strong{font:800 1.5rem/1 var(--fd);text-transform:uppercase}
 .pass .row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-footer{position:relative;z-index:3;padding:40px var(--gut) calc(28px + env(safe-area-inset-bottom,0px));display:flex;flex-wrap:wrap;gap:16px 40px;justify-content:space-between;border-top:1px solid var(--line);font:400 11px/1.6 var(--fm);letter-spacing:.1em;text-transform:uppercase;color:var(--dim);background:linear-gradient(transparent,rgba(4,6,12,.9) 40%)}
+footer{position:relative;z-index:3;padding:24px var(--gut) calc(24px + env(safe-area-inset-bottom,0px));display:flex;flex-wrap:wrap;gap:16px 40px;justify-content:space-between;border-top:1px solid var(--line);font:400 11px/1.6 var(--fm);letter-spacing:.1em;text-transform:uppercase;color:var(--dim);background:linear-gradient(transparent,rgba(4,6,12,.9) 40%)}
 footer a{color:var(--mute);text-decoration:none}
 footer a:hover{color:var(--bone)}
 
 @media (max-width:900px){
-  .navlinks{display:none}
   .rail{display:none}
   .stats{grid-template-columns:1fr 1fr}
   .stat:nth-child(3){border-left:0;padding-left:0}
@@ -275,15 +289,15 @@ footer a:hover{color:var(--bone)}
   #scrim::before,#scrim::after{background:linear-gradient(180deg,rgba(4,6,12,.1),rgba(4,6,12,.75) 55%,rgba(4,6,12,.9))!important}
   body[data-side] #scrim::before{opacity:1}
   body[data-side] #scrim::after{opacity:0}
-  #s-specs,#s-missions{justify-content:flex-start}
+  #s-specs,#s-missions{justify-content:flex-start;padding-right:var(--gut)}
   .sticky{align-items:flex-end;padding-bottom:70px}
   .hud-br{display:none}
-  .corner{display:none}
   .pgrid{grid-template-columns:1fr 1fr}
   .pgrid div:not(:nth-child(3n+1)){padding-left:0;border-left:0}
   .pgrid div:nth-child(even){padding-left:12px;border-left:1px solid var(--line)}
   .pline{min-height:0}
   .launch{padding-block:100px 70px}
+  .cwrap{margin-left:0}
 }
 @media (max-width:520px){
   #sndl{display:none}
@@ -331,21 +345,12 @@ footer a:hover{color:var(--bone)}
     <svg viewBox="0 0 40 40" fill="none" aria-hidden="true"><circle cx="15" cy="20" r="5" fill="#f3cf7a"/><ellipse cx="20" cy="20" rx="17" ry="9" stroke="#e8ebf0" stroke-width="1.4" transform="rotate(-18 20 20)"/><circle cx="36" cy="14.6" r="2.6" fill="#e8ebf0"/></svg>
     Aphelion
   </a>
-  <nav class="navlinks" aria-label="Chapters">
-    <a href="#s-manifesto" data-nav="1">Agency</a>
-    <a href="#s-forge" data-nav="2">Shipyard</a>
-    <a href="#s-launch" data-nav="4">Launch</a>
-    <a href="#s-explore" data-nav="6">Planets</a>
-    <a href="#s-missions" data-nav="7">Manifest</a>
-  </nav>
   <div class="navr">
     <button class="pill" id="snd" type="button" aria-pressed="false" aria-label="Ambient sound"><span class="bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span id="sndl">Sound off</span></button>
     <a class="pill solid" href="#s-cta">Join the crew</a>
   </div>
 </header>
 
-<div class="corner c1"></div><div class="corner c2"></div><div class="corner c3"></div><div class="corner c4"></div>
-<div class="hud hud-bl">MET <b id="met">T+00:00:00</b><br>Sector <b id="sector">Low Earth Orbit</b></div>
 <div class="hud hud-br"><span class="k">●</span> Tracking <b id="tgt">Earth · Sol III</b><br>X <b id="hx">0</b> Y <b id="hy">0</b> Z <b id="hz">0</b> · V <b id="hv">0.0</b> km/s</div>
 <nav class="rail" id="rail" aria-label="Scroll progress"></nav>
 
@@ -410,11 +415,14 @@ footer a:hover{color:var(--bone)}
   <section id="s-launch" class="chap" data-side="left" data-sector="Trans-Solar Injection" data-label="Launch" data-track="APH-1 Meridian">
     <div class="sticky">
       <div class="launch">
-        <div>
-          <p class="eyebrow">Chapter 03 — Departure</p>
-          <div class="phase" id="phase">Terminal count · all stations go</div>
+        <div class="cwrap">
+          <div class="count" id="count"><span class="u">T–</span>10</div>
+          <div class="hold" id="hold" aria-live="polite">
+            <p id="holdmsg">We're ready to launch.</p>
+            <p class="hint" id="holdhint">Keep scrolling to charge the engines</p>
+            <div class="chg">Charge <span class="trk"><i id="chgbar"></i></span><b id="chgpct">0%</b></div>
+          </div>
         </div>
-        <div style="align-self:center"><div class="count" id="count"><span class="u">T–</span>10</div></div>
         <dl class="readouts">
           <div><dt>Velocity</dt><dd><span id="rvel">0.00</span><small>km/s</small></dd></div>
           <div><dt>Range from Earth</dt><dd><span id="rrng">0</span><small>km</small></dd></div>
@@ -425,12 +433,16 @@ footer a:hover{color:var(--bone)}
     </div>
   </section>
 
-  <section id="s-system" class="chap" data-side="left" data-sector="Heliocentric Space" data-label="System" data-track="Sol">
-    <div class="col">
-      <p class="eyebrow rv">Chapter 04 — The Neighbourhood</p>
-      <h2 class="h2 rv">Eight worlds. One ship to reach them all.</h2>
-      <p class="lede rv">From Mercury's scorched iron to Neptune's supersonic winds, 4.5 billion kilometres of real estate — and every Meridian carries enough propellant to get anywhere in it after one refuelling in orbit.</p>
-      <div class="lightline rv"><span>Sunlight to Neptune</span><i></i><b>4 h 10 m</b></div>
+  <section id="s-system" class="chap" data-side="center" data-sector="Heliocentric Space" data-label="System" data-track="Sol">
+    <div class="sticky">
+      <div class="sys">
+        <div>
+          <p class="eyebrow rv">Chapter 04 — The Neighbourhood</p>
+          <h2 class="h2 rv">Eight worlds. One ship to reach them all.</h2>
+          <p class="lede rv">From Mercury's scorched iron to Neptune's supersonic winds, 4.5 billion kilometres of real estate — and every Meridian carries enough propellant to get anywhere in it after one refuelling in orbit.</p>
+        </div>
+        <div class="lightline rv"><span>Sunlight to Neptune</span><i></i><b>4 h 10 m</b></div>
+      </div>
     </div>
   </section>
 
@@ -472,6 +484,7 @@ footer a:hover{color:var(--bone)}
   <section id="s-cta" class="chap" data-side="center" data-sector="Open Channel" data-label="Join" data-track="Sol">
     <p class="eyebrow rv" style="justify-content:center">Now boarding</p>
     <h2 class="cta-t rv">The solar system<br><span class="foil">is hiring.</span></h2>
+    <div class="cta-foot">
     <p class="lede rv" style="margin-inline:auto">Welders, flight surgeons, orbital mechanics, hydroponic farmers, poets. Put your name on the next manifest.</p>
     <form class="form rv" id="form" novalidate>
       <label for="email" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Email address</label>
@@ -480,13 +493,12 @@ footer a:hover{color:var(--bone)}
     </form>
     <div class="formmsg" id="formmsg" aria-live="polite"></div>
     <div id="passwrap"></div>
+    </div>
   </section>
 </main>
 
 <footer>
   <span>© 2026 Aphelion Interplanetary Agency — a work of fiction</span>
-  <span>Anchor Shipyard · 408 km · 51.6° inclination</span>
-  <a href="#s-hero">Return to orbit ↑</a>
 </footer>
 
 <script type="importmap">
@@ -895,13 +907,52 @@ PLANETS.forEach((P, k) => {
   P.ang = 2.4 + k * .62; P.w = .012 * Math.pow(40 / P.d, 1.5);
   mesh.userData.k = k; pickables.push(mesh);
 });
-/* asteroid belt */
+/* asteroid belt: sun-lit faceted rocks (power-law sizes) over a faint dust band */
+var belt = new THREE.Group(); system.add(belt);
 {
-  const N = narrow ? 1400 : 2600, pos = new Float32Array(N * 3);
-  for (let i = 0; i < N; i++) { const a = Math.random() * Math.PI * 2, r = 58 + (Math.random() + Math.random() - 1) * 4.5; pos.set([Math.cos(a) * r, (Math.random() - .5) * 1.8, Math.sin(a) * r], i * 3); }
+  const rockMat = new THREE.ShaderMaterial({
+    uniforms: { uSunPos: { value: C } },
+    vertexShader: `attribute float aTint; varying vec3 vW; varying vec3 vOP; varying float vT;
+      void main(){ vec4 w = modelMatrix * instanceMatrix * vec4(position, 1.); vW = w.xyz; vOP = position; vT = aTint;
+        gl_Position = projectionMatrix * viewMatrix * w; }`,
+    fragmentShader: NOISE + `uniform vec3 uSunPos; varying vec3 vW; varying vec3 vOP; varying float vT;
+      void main(){ vec3 N = normalize(cross(dFdx(vW), dFdy(vW))); vec3 L = normalize(uSunPos - vW);
+        float d = max(dot(N, L), 0.);
+        float n = snoise(vOP * 3.2 + vT * 17.) * .5 + .5, m = snoise(vOP * 9. + 4.) * .5 + .5;
+        vec3 base = mix(vec3(.20, .19, .18), vec3(.60, .53, .44), vT) * (.7 + .45 * n) * (.85 + .3 * m);
+        gl_FragColor = vec4(base * (d * 1.7 + .035), 1.); }`
+  });
+  // a few lumpy base shapes; displacement is a function of position so shared corners stay welded
+  const lump = (seed) => {
+    const g = new THREE.IcosahedronGeometry(1, 1), p = g.attributes.position, v = new V3();
+    for (let k = 0; k < p.count; k++) {
+      v.fromBufferAttribute(p, k);
+      const f = 1 + .28 * Math.sin(v.x * 2.3 + seed) * Math.sin(v.y * 2.9 + seed * 1.7) + .16 * Math.sin(v.z * 4.1 + seed * 2.3) - .12 * Math.abs(Math.sin(v.x * 5.3 + v.z * 3.1 + seed));
+      p.setXYZ(k, v.x * f, v.y * f * .8, v.z * f);
+    }
+    return g;
+  };
+  const total = narrow ? 900 : 1900, kinds = 4, per = Math.ceil(total / kinds);
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), sc = new V3(), ps = new V3();
+  for (let t = 0; t < kinds; t++) {
+    const im = new THREE.InstancedMesh(lump(t * 1.9 + .4), rockMat, per), tint = new Float32Array(per);
+    for (let k = 0; k < per; k++) {
+      const a = Math.random() * Math.PI * 2, r = 58 + (Math.random() + Math.random() + Math.random() - 1.5) * 5.2;
+      ps.set(Math.cos(a) * r, (Math.random() + Math.random() - 1) * .9, Math.sin(a) * r);
+      const size = .035 + .30 * Math.pow(Math.random(), 6);
+      sc.set(size * (.7 + Math.random() * .6), size * (.6 + Math.random() * .5), size * (.7 + Math.random() * .6));
+      q.setFromEuler(e.set(Math.random() * 6.3, Math.random() * 6.3, Math.random() * 6.3));
+      im.setMatrixAt(k, m4.compose(ps, q, sc)); tint[k] = Math.random() * Math.random() + (Math.random() < .25 ? .35 : 0);
+    }
+    im.geometry.setAttribute('aTint', new THREE.InstancedBufferAttribute(tint, 1));
+    im.frustumCulled = false; belt.add(im);
+  }
+  // fine dust so the band still reads as a ring from far away
+  const N = narrow ? 2500 : 5000, pos = new Float32Array(N * 3);
+  for (let k = 0; k < N; k++) { const a = Math.random() * Math.PI * 2, r = 58 + (Math.random() + Math.random() + Math.random() - 1.5) * 6.5; pos.set([Math.cos(a) * r, (Math.random() + Math.random() - 1) * 1.1, Math.sin(a) * r], k * 3); }
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  var belt = new THREE.Points(g, new THREE.PointsMaterial({ size: .45, map: DOT, color: 0x9c8f7d, transparent: true, depthWrite: false }));
-  system.add(belt);
+  const dust = new THREE.Points(g, new THREE.PointsMaterial({ size: .09, map: DOT, color: 0x8a7f70, transparent: true, opacity: .45, depthWrite: false }));
+  dust.frustumCulled = false; belt.add(dust);
 }
 
 /* ================= Starship ================= */
@@ -984,9 +1035,9 @@ function makeShip({ blueprint = false } = {}) {
   const plumeVS = `varying vec2 vUv; varying vec3 vNV; varying vec3 vVP;
     void main(){ vUv = uv; vNV = normalize(normalMatrix*normal); vec4 mv = modelViewMatrix*vec4(position,1.); vVP = mv.xyz; gl_Position = projectionMatrix*mv; }`;
   const plumeFS = (core) => NOISE + `uniform float uTime, uPower; varying vec2 vUv; varying vec3 vNV; varying vec3 vVP;
-    void main(){ float t = vUv.y; float f = abs(dot(normalize(vNV), normalize(-vVP)));
+    void main(){ float t = clamp(vUv.y, 0., 1.); float f = abs(dot(normalize(vNV), normalize(-vVP)));
       float n = snoise(vec3(vUv.x*7., t*5.-uTime*10., uTime*1.3))*.5+.5;
-      float a = pow(1.-t, ${core ? '2.2' : '1.5'})*f*f*(.5+.5*n);
+      float a = pow(max(1.-t, 0.), ${core ? '2.2' : '1.5'})*f*f*(.5+.5*n);
       vec3 c = mix(vec3(.7,.8,1.), vec3(1.,.55,.2), smoothstep(.02,.35,t));
       c = mix(c, vec3(1.,.22,.07), smoothstep(.35,1.,t));
       ${core ? 'float dia = smoothstep(.55,1.,sin(t*38.-uTime*3.)*.5+.5)*(1.-t)*.9; a += dia*f;' : ''}
@@ -1019,8 +1070,12 @@ function makeShip({ blueprint = false } = {}) {
     bellMats.forEach(m => m.emissiveIntensity = p * 1.8);
     engLight.intensity = p * 120;
   };
+  const setCharge = (c) => {
+    bellMats.forEach(m => m.emissiveIntensity = Math.max(m.emissiveIntensity, c * .9));
+    engLight.intensity = Math.max(engLight.intensity, c * 30);
+  };
   model.position.y = -5.9;
-  return { model, parts, setAssembly, setPower };
+  return { model, parts, setAssembly, setPower, setCharge };
 }
 
 /* forge ship */
@@ -1125,6 +1180,15 @@ const rt = new THREE.WebGLRenderTarget(innerWidth * DPR, innerHeight * DPR, { ty
 const composer = new EffectComposer(renderer, rt);
 composer.setPixelRatio(DPR); composer.setSize(innerWidth, innerHeight);
 composer.addPass(new RenderPass(scene, camera));
+// scrub NaN/Inf and clamp extreme HDR values; bloom smears a single bad pixel into flickering black squares
+composer.addPass(new ShaderPass({
+  uniforms: { tDiffuse: { value: null } },
+  vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.); }`,
+  fragmentShader: `uniform sampler2D tDiffuse; varying vec2 vUv;
+    void main(){ vec4 c = texture2D(tDiffuse, vUv);
+      if (any(isnan(c.rgb)) || any(isinf(c.rgb)) || !(max(c.r, max(c.g, c.b)) < 6e4)) c.rgb = vec3(0.);
+      gl_FragColor = vec4(clamp(c.rgb, 0., 48.), 1.); }`
+}));
 const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth / 2, innerHeight / 2), .72, .5, .86);
 composer.addPass(bloom);
 const finalPass = new ShaderPass({
@@ -1145,6 +1209,8 @@ const N = sections.length;
 let tops = [], heights = [], vh = innerHeight;
 function measure() {
   vh = innerHeight;
+  // the last chapter plus the footer fill exactly one screen, so the page ends on that frame
+  $('#s-cta').style.minHeight = Math.max(0, innerHeight - $('footer').offsetHeight) + 'px';
   tops = sections.map(s => s.getBoundingClientRect().top + scrollY);
   heights = sections.map(s => s.offsetHeight);
 }
@@ -1166,6 +1232,14 @@ function shipStateAt(sp) {
   const power = ign * (1 - .65 * smooth(.86, .95, sp)) * (1 - smooth(.95, 1, sp));
   const warpAmt = smooth(.46, .6, sp) * (1 - smooth(.8, .92, sp));
   return { pos, quat, power, warp: warpAmt, move };
+}
+// raw scroll through the launch section -> launch timeline. The countdown is one even stretch
+// (10 seconds over CD.vh of scroll) while the engines charge, then the flight takes the rest.
+const CD = { vh: 500, flightVh: 220 };
+CD.end = CD.vh / (CD.vh + CD.flightVh); // raw progress at T-0
+function launchTime(r) {
+  if (r < CD.end) return { sp: .27 * r / CD.end, charge: r / CD.end };
+  return { sp: .27 + .73 * (r - CD.end) / (1 - CD.end), charge: 1 };
 }
 function launchReadouts(sp) {
   let vel = 0; if (sp > .27) vel = lerp(0, 11.2, smooth(.27, .45, sp)) + lerp(0, 52, smooth(.42, .7, sp)) - lerp(0, 28, smooth(.82, 1, sp));
@@ -1195,7 +1269,7 @@ const cams = [
     const k = easeIO(smooth(.27, .46, sp));
     return { pos: early.pos.lerp(chase.pos, k), tgt: early.tgt.lerp(chase.tgt, k), off: lerp(.12, 0, k) };
   },
-  (p) => ({ pos: around(C, arr, -.25 + p * .35, 230 - 30 * p, 105 + 15 * p), tgt: C.clone(), off: .17 }),
+  (p) => ({ pos: around(C, arr, -.25 + p * .35, 230 - 30 * p, 105 + 15 * p), tgt: C.clone(), off: 0 }),
   (p, sp) => {
     const x = sp * 8, k = Math.min(7, Math.floor(x)), q = x - k;
     const a = focusCam(k);
@@ -1203,7 +1277,7 @@ const cams = [
     return a;
   },
   (p) => ({ pos: around(C, arr, 1.7 + p * .5, 150, 30 + 10 * p), tgt: C.clone().add(new V3(0, -4, 0)), off: -.24 }),
-  (p) => ({ pos: around(C, arr, 2.4 + p * .3, 420 + 120 * p, 330 + 60 * p), tgt: C.clone(), off: 0 }),
+  (p) => ({ pos: around(C, arr, 2.5 + p * .3, 460 + 120 * p, 350 + 60 * p), tgt: C.clone(), off: 0 }), // p=0 is the closing frame
 ];
 function arcLerp(a, b, t) {
   const ax = a.x - C.x, az = a.z - C.z, bx = b.x - C.x, bz = b.z - C.z;
@@ -1214,7 +1288,8 @@ function arcLerp(a, b, t) {
 function cameraFor(i, p, sp) {
   const a = cams[i](p, sp);
   if (i < N - 1) {
-    const t = easeIO(smooth(.62, 1, p));
+    // the planet tour keeps every world framed while it's pinned; only hand off once it starts scrolling away
+    const t = easeIO(smooth(i === 6 ? (heights[i] - vh) / heights[i] : .62, 1, p));
     if (t > 0) {
       const b = cams[i + 1](0, 0);
       const useArc = i >= 5;
@@ -1228,18 +1303,30 @@ function cameraFor(i, p, sp) {
 
 /* ================= DOM: rail, planet list, labels ================= */
 const rail = $('#rail');
-sections.forEach((s, k) => {
-  const b = document.createElement('button'); b.type = 'button';
-  b.innerHTML = `<span>${String(k).padStart(2, '0')} · ${s.dataset.label}</span><i></i>`;
+const CHAPTERS = [1, 2, 4, 6, 7], chapterOf = [-1, 1, 2, 2, 4, 6, 6, 7, -1];
+CHAPTERS.forEach((k, n) => {
+  const s = sections[k], b = document.createElement('button'); b.type = 'button'; b.style.setProperty('--k', n);
+  b.innerHTML = `<b>${s.dataset.label}</b>`;
+  if (!reduced) b.addEventListener('mouseenter', () => scramble(b.querySelector('b'), s.dataset.label));
   b.setAttribute('aria-label', `Go to ${s.dataset.label}`);
   b.onclick = () => scrollTo({ top: tops[k] + (k === 6 ? 2 : 0), behavior: reduced ? 'auto' : 'smooth' });
   rail.appendChild(b);
 });
 const railBtns = $$('button', rail);
+const sysEl = $('.sys');
+function scramble(el, text) {
+  const G = '/\\_-+=#01<>', t0 = performance.now();
+  cancelAnimationFrame(el._raf);
+  (function f(now) {
+    const done = Math.floor((now - t0) / 28);
+    el.textContent = [...text].map((c, i) => i < done || c === ' ' ? c : G[Math.random() * G.length | 0]).join('');
+    if (done < text.length) el._raf = requestAnimationFrame(f);
+  })(t0);
+}
 const plist = $('#plist'), labelsEl = $('#plabels');
 PLANETS.forEach((P, k) => {
   const li = document.createElement('li');
-  li.innerHTML = `<button type="button" data-k="${k}"><em>${P.rn}</em>${P.name}</button>`;
+  li.innerHTML = `<button type="button" data-k="${k}">${P.name}</button>`;
   plist.appendChild(li);
   const lb = document.createElement('button'); lb.type = 'button'; lb.className = 'plabel'; lb.textContent = P.name; lb.dataset.k = k; lb.tabIndex = -1;
   labelsEl.appendChild(lb); P.label = lb;
@@ -1364,26 +1451,53 @@ function resize() {
 addEventListener('resize', resize);
 
 /* ================= main loop ================= */
-let sy = scrollY, frame = 0, lastI = -1;
+let sy = scrollY, frame = 0, lastI = -1, holdFull = null;
 const camPos = new V3().copy(camera.position), camTgt = new V3(0, .5, 0);
 let camOff = .21, fov = 42;
 const lastCam = new V3().copy(camera.position);
-const t0 = performance.now();
-const secEls = { sector: $('#sector'), tgt: $('#tgt'), met: $('#met'), hx: $('#hx'), hy: $('#hy'), hz: $('#hz'), hv: $('#hv') };
-const navA = $$('.navlinks a');
+const secEls = { tgt: $('#tgt'), hx: $('#hx'), hy: $('#hy'), hz: $('#hz'), hv: $('#hv') };
 function fmt(n) { return n.toLocaleString('en-US'); }
 
+/* autopilot legs: crossing a trigger point on the way down glides the page to the next stop on a clock.
+   Scroll input is held off until it lands (plus a short settle so trackpad momentum can't fire the next leg). */
+const landSystem = () => tops[5] + vh * .2; // the framed chapter-04 view (camera at p ≈ .1)
+const LEGS = [
+  // T-0 -> the solar system: the whole flight plays by itself
+  { at: () => tops[4] + CD.end * (heights[4] - vh), to: landSystem, ms: 9000 },
+  // a nudge past the system view -> the first planet
+  { at: () => landSystem() + vh * .05, to: () => tops[6] + (heights[6] - vh) * (.35 / 8), ms: 4500 },
+];
+const SETTLE_MS = 900;
+let auto = null, lastY = Infinity;
+const holdScroll = (e) => { if (auto) e.preventDefault(); };
+addEventListener('wheel', holdScroll, { passive: false });
+addEventListener('touchmove', holdScroll, { passive: false });
+addEventListener('keydown', (e) => { if (auto && [' ', 'PageDown', 'PageUp', 'ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) e.preventDefault(); });
+addEventListener('click', (e) => { if (auto && e.target.closest('a,button')) auto = null; }, true);
+function autoFlight() {
+  const y = scrollY;
+  if (!auto && !reduced) for (const L of LEGS) { const a = L.at(); if (lastY < a && y >= a && y < L.to()) { auto = { t0: performance.now(), from: y, to: L.to(), ms: L.ms }; break; } }
+  if (!auto) { lastY = y; return; }
+  const k = clamp((performance.now() - auto.t0) / auto.ms), e = k < .5 ? 4 * k * k * k : 1 - Math.pow(2 - 2 * k, 3) / 2;
+  scrollTo({ top: auto.from + (auto.to - auto.from) * e, behavior: 'instant' });
+  lastY = scrollY;
+  if (performance.now() - auto.t0 >= auto.ms + SETTLE_MS) auto = null;
+}
 function tick() {
   const dt = Math.min(clock.getDelta(), .05);
   const t = clock.elapsedTime; uTime.value = t;
+  autoFlight();
   sy = reduced ? scrollY : sy + (scrollY - sy) * (1 - Math.exp(-dt * 6.5));
-  const { i, p, sp } = sectionState(sy);
+  let { i, p, sp } = sectionState(sy), charge = 0, holdR = sp;
+  if (i === 4) ({ sp, charge } = launchTime(sp));
 
   /* Earth + traffic */
   earth.rotation.y += dt * .012;
   updateSats(t);
   moon.rotation.y += dt * .01;
   heroPivot.visible = i <= 3;
+  // home port (Earth, moon, shipyard, traffic) drops out once we're touring the planets
+  earthTilt.visible = moon.visible = yard.visible = i < 6;
   if (heroShip) {
     const a = t * .07 + 2.2, r = 13.8;
     const pos = new V3(Math.cos(a) * r, Math.sin(a) * 2.5 + 1.5, Math.sin(a) * r);
@@ -1411,22 +1525,31 @@ function tick() {
     st = shipStateAt(i < 4 ? 0 : i === 4 ? sp : 1);
     shipPivot.position.copy(st.pos); shipPivot.quaternion.copy(st.quat);
     ship.setPower(i === 4 ? st.power : 0, t);
+    if (i === 4 && charge < 1) ship.setCharge(charge);
     shipPivot.visible = !(i >= 6);
   }
   const warpAmt = (i === 4 && st) ? st.warp : 0;
   updateWarp(reduced ? warpAmt * .4 : warpAmt, dt);
 
   /* launch UI */
+  $('#hold').classList.toggle('on', i === 4 && holdR < CD.end);
   if (i === 4) {
     const r = launchReadouts(sp);
-    let cnt, phase;
-    if (sp < .27) { const n = Math.max(0, Math.ceil(10 * (1 - sp / .27))); cnt = `<span class="u">T–</span>${String(n).padStart(2, '0')}`; }
-    else { const secs = Math.floor(Math.pow((sp - .27) / .73, 2.4) * 86400 * 146); const d = Math.floor(secs / 86400), h = Math.floor(secs % 86400 / 3600), m = Math.floor(secs % 3600 / 60);
-      cnt = d > 0 ? `<span class="u">T+</span>${d}<span class="u">d</span>${String(h).padStart(2, '0')}<span class="u">h</span>` : `<span class="u">T+</span>${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(secs % 60).padStart(2, '0')}`; }
-    phase = sp < .12 ? 'Terminal count · all stations go' : sp < .27 ? 'Ignition sequence start · Helix-V spin-up' : sp < .44 ? 'Clear of Anchor · pitch to departure attitude' : sp < .62 ? 'Trans-solar injection burn' : sp < .86 ? 'Cruise · heliocentric transfer' : 'Arrival · orbit insertion';
-    $('#count').innerHTML = cnt; $('#phase').textContent = phase;
+    // count down to T-0, hold it through liftoff, then clear the frame so only the ship is left
+    const n = Math.max(0, Math.ceil(10 * (1 - sp / .27)));
+    const cnt = `<span class="u">T–</span>${n ? String(n).padStart(2, '0') : '0'}`;
+    $('.launch').classList.toggle('flying', sp > .31);
+    $('#count').innerHTML = cnt;
+    $('#count').classList.toggle('holding', sp < .27);
+    // the charge bar is the countdown's timeline: empty at T-10, full at T-0
+    const prog = charge;
+    $('#chgbar').style.transform = `scaleX(${prog})`; $('#chgpct').textContent = Math.round(prog * 100) + '%';
+    const full = sp >= .27 * .9;
+    if (full !== holdFull) { holdFull = full;
+      $('#holdmsg').textContent = full ? 'Engines charged. Go for launch.' : "We're ready to launch.";
+      $('#holdhint').textContent = full ? 'Liftoff' : 'Keep scrolling to charge the engines'; }
     $('#rvel').textContent = r.vel.toFixed(2); $('#rrng').textContent = fmt(r.range); $('#rthr').textContent = r.thr; $('#thrbar').style.width = r.thr + '%';
-    if (audio && audio.on) { audio.rumble.gain.setTargetAtTime(st.power * .9, audio.A.currentTime, .1); audio.nf.frequency.setTargetAtTime(160 + st.power * 380, audio.A.currentTime, .2); }
+    if (audio && audio.on) { audio.rumble.gain.setTargetAtTime(Math.max(st.power * .9, charge < 1 ? charge * .35 : 0), audio.A.currentTime, .1); audio.nf.frequency.setTargetAtTime(160 + st.power * 380, audio.A.currentTime, .2); }
   } else if (audio && audio.on) audio.rumble.gain.setTargetAtTime(0, audio.A.currentTime, .3);
 
   /* manifesto */
@@ -1450,6 +1573,7 @@ function tick() {
   const dist = camPos.distanceTo(camTgt);
   const fwd = tmpA.subVectors(camTgt, camPos).normalize(); const right = tmpB.crossVectors(fwd, UP).normalize();
   camera.position.copy(camPos).addScaledVector(right, mouse.sx * dist * .03).addScaledVector(UP, mouse.sy * dist * .02);
+  if (i === 4 && charge > 0 && charge < 1) { const sh = charge * charge * .035; camera.position.add(new V3((Math.random() - .5) * sh, (Math.random() - .5) * sh, (Math.random() - .5) * sh)); }
   if (i === 4 && st && st.power > 0) { const sh = st.power * (1 - smooth(.4, .55, sp)) * .08 + warpAmt * .05; camera.position.add(new V3((Math.random() - .5) * sh, (Math.random() - .5) * sh, (Math.random() - .5) * sh)); }
   camera.lookAt(camTgt);
   const targetFov = 42 + warpAmt * 22;
@@ -1460,8 +1584,11 @@ function tick() {
   sky.position.copy(camera.position);
   finalPass.uniforms.uCA.value = .0025 + warpAmt * .012;
 
+  // chapter 04 copy fades out shortly before the pinned view starts scrolling away
+  sysEl.classList.toggle('leaving', sy > tops[5] + heights[5] - vh * 1.3);
+
   /* planet labels + picking */
-  const showLabels = i === 5 || i === 6 || (i === 4 && p > .8) || (i === 7 && p < .3);
+  const showLabels = i === 6; // names only during the planet tour, never over the wide system view
   labelsEl.style.opacity = showLabels ? 1 : 0;
   if (showLabels) {
     PLANETS.forEach((P, k) => {
@@ -1483,15 +1610,13 @@ function tick() {
   if (i !== lastI) {
     lastI = i; const s = sections[i];
     document.body.dataset.side = s.dataset.side;
-    secEls.sector.textContent = s.dataset.sector;
-    railBtns.forEach((b, k) => b.classList.toggle('on', k === i));
-    navA.forEach(a => a.classList.toggle('on', +a.dataset.nav === i || (+a.dataset.nav === 2 && i === 3) || (+a.dataset.nav === 6 && i === 5)));
+    railBtns.forEach((b, n) => b.classList.toggle('on', CHAPTERS[n] === chapterOf[i]));
+    rail.classList.toggle('show', i > 0 && i !== 4); rail.inert = i === 0 || i === 4;
+    document.body.classList.toggle('in-launch', i === 4);
   }
   if ((frame++ & 3) === 0) {
     const s = sections[i];
     secEls.tgt.textContent = i === 6 ? PLANETS[shownPlanet].name : s.dataset.track;
-    const e = (performance.now() - t0) / 1000;
-    secEls.met.textContent = `T+${String(Math.floor(e / 3600)).padStart(2, '0')}:${String(Math.floor(e % 3600 / 60)).padStart(2, '0')}:${String(Math.floor(e % 60)).padStart(2, '0')}`;
     secEls.hx.textContent = (camera.position.x * 640).toFixed(0); secEls.hy.textContent = (camera.position.y * 640).toFixed(0); secEls.hz.textContent = (camera.position.z * 640).toFixed(0);
     const v = i === 4 ? launchReadouts(sp).vel : lastCam.distanceTo(camera.position) / Math.max(dt * 4, 1e-3) * .64 * .25;
     secEls.hv.textContent = v.toFixed(1);
