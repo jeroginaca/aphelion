@@ -496,6 +496,7 @@ footer a:hover{color:var(--bone)}
 
 <footer>
   <span>© 2026 Aphelion Interplanetary Agency — a work of fiction</span>
+  <span>Star map: NASA/Goddard SVS · Gaia DR2: ESA/Gaia/DPAC · ISS model: NASA VTAD</span>
   <span>Planet textures: <a href="https://www.solarsystemscope.com/textures/" target="_blank" rel="noopener">Solar System Scope</a>, CC BY 4.0, based on NASA imagery · Ship model: <a href="https://sketchfab.com/3d-models/spacex-starship-83d9d7d5e9c54d768f0c2c99d5ad50aa" target="_blank" rel="noopener">Render Island</a>, CC BY 4.0</span>
 </footer>
 
@@ -511,6 +512,7 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 
 /* ================= helpers ================= */
 const $ = (s, r = document) => r.querySelector(s);
@@ -660,10 +662,10 @@ const bandN = new V3(0.35, 1, 0.25).normalize();
   const geo = new THREE.SphereGeometry(4000, 64, 32);
   const mat = new THREE.ShaderMaterial({
     side: THREE.BackSide, depthWrite: false,
-    uniforms: { uBand: { value: bandN } },
+    uniforms: { uBand: { value: bandN }, uSky: { value: null }, uHasSky: { value: 0 }, uGal: { value: new THREE.Matrix3().setFromMatrix4(new THREE.Matrix4().makeRotationFromQuaternion(new THREE.Quaternion().setFromUnitVectors(bandN, new V3(0, 1, 0)))) } },
     vertexShader: `varying vec3 vDir; void main(){ vDir = position; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.); }`,
     fragmentShader: NOISE + `
-      uniform vec3 uBand; varying vec3 vDir;
+      uniform vec3 uBand; uniform sampler2D uSky; uniform float uHasSky; uniform mat3 uGal; varying vec3 vDir;
       void main(){
         vec3 d = normalize(vDir);
         float b = dot(d, uBand);
@@ -675,12 +677,29 @@ const bandN = new V3(0.35, 1, 0.25).normalize();
         col *= 1. - band*smoothstep(.52,.72,n2)*.7;
         col += vec3(.01,.035,.06)*pow(n,4.)*2.2;
         col += vec3(.05,.012,.04)*pow(fbm3(d*3.1+9.)*.5+.5,5.)*2.4;
+        // NASA/Gaia all-sky map in galactic coordinates, turned so its plane lies along the same band
+        if(uHasSky > .5){
+          vec3 g = uGal*d;
+          vec2 uv = vec2(atan(g.z, g.x)/6.28318 + .5, asin(clamp(g.y,-1.,1.))/3.14159 + .5);
+          // the darkest of a small cross of samples is the map's diffuse glow; what sits above it is point stars.
+          // Faint stars are kept, bright ones are capped (magnified, a bright single-pixel star reads as a square)
+          vec2 px = vec2(1./8192., 1./4096.) * 1.8;
+          vec3 o = texture2D(uSky, uv).rgb;
+          vec3 e = min(min(o, texture2D(uSky, uv + vec2(px.x, 0.)).rgb), min(texture2D(uSky, uv - vec2(px.x, 0.)).rgb, min(texture2D(uSky, uv + vec2(0., px.y)).rgb, texture2D(uSky, uv - vec2(0., px.y)).rgb)));
+          vec3 m = e + min(o - e, vec3(.03));
+          col = m*1.25 + m*m*3. + col*.3;   // lift the faint Gaia band, let bright stars bloom a touch
+        }
         gl_FragColor = vec4(col,1.);
       }`
   });
   sky.add(new THREE.Mesh(geo, mat));
+  // no mipmaps: the map is magnified on screen anyway, and mip selection would draw a seam where the longitude wraps
+  new THREE.TextureLoader().load('assets/tex/' + (narrow ? 'milkyway_4k.jpg' : 'milkyway_8k.jpg'), t => {
+    t.colorSpace = THREE.SRGBColorSpace; t.generateMipmaps = false; t.minFilter = THREE.LinearFilter; t.wrapS = THREE.RepeatWrapping;
+    mat.uniforms.uSky.value = t; mat.uniforms.uHasSky.value = 1;
+  });
 }
-const STAR_N = narrow ? 5000 : 9000;
+const STAR_N = narrow ? 4500 : 8500; // crisp foreground stars over the photographic sky
 const starMat = new THREE.ShaderMaterial({
   transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
   uniforms: { uTime, uPR: { value: DPR } },
@@ -688,10 +707,11 @@ const starMat = new THREE.ShaderMaterial({
     uniform float uTime, uPR; varying vec3 vC; varying float vT;
     void main(){ vec4 mv = modelViewMatrix*vec4(position,1.); gl_Position = projectionMatrix*mv;
       float tw = .7+.3*sin(uTime*(.6+aPhase*2.4)+aPhase*50.);
-      gl_PointSize = aSize*uPR*(.85+.3*tw); vC = aColor; vT = tw; }`,
+      gl_PointSize = aSize*uPR*1.7*(.85+.3*tw); vC = aColor; vT = tw; }`,
+  // a round gaussian on a sprite big enough to resolve it; peak kept under bloom so a star never saturates into a square
   fragmentShader: `varying vec3 vC; varying float vT;
-    void main(){ float d = length(gl_PointCoord-.5); float a = smoothstep(.5,0.,d); a = a*a*(.4+.6*a);
-      gl_FragColor = vec4(vC*a*vT, a); }`
+    void main(){ vec2 c = gl_PointCoord-.5; float a = exp(-dot(c,c)*24.);
+      gl_FragColor = vec4(min(vC*vT, vec3(.95))*a, a); }`
 });
 {
   const pos = new Float32Array(STAR_N * 3), col = new Float32Array(STAR_N * 3), size = new Float32Array(STAR_N), ph = new Float32Array(STAR_N);
@@ -703,7 +723,7 @@ const starMat = new THREE.ShaderMaterial({
     const r = 2200 + Math.random() * 1500;
     pos.set([v.x * r, v.y * r, v.z * r], i * 3);
     const t = temps[Math.floor(Math.pow(Math.random(), 1.4) * temps.length)];
-    const bright = Math.random() < .02 ? 2.2 : 1;
+    const bright = Math.random() < .02 ? 1.35 : 1;
     col.set([t[0] * bright, t[1] * bright, t[2] * bright], i * 3);
     size[i] = 0.8 + Math.pow(Math.random(), 7) * 5.5;
     ph[i] = Math.random();
@@ -871,20 +891,69 @@ const system = new THREE.Group(); system.position.copy(C); scene.add(system);
 const sun = new THREE.Mesh(new THREE.SphereGeometry(10, 96, 64), new THREE.ShaderMaterial({
   uniforms: { uTime },
   vertexShader: planetVS,
+  // photosphere: boiling granulation, drifting sunspots with penumbra, faculae, and real limb darkening
   fragmentShader: NOISE + `uniform float uTime; varying vec3 vN; varying vec3 vW; varying vec3 vP;
-    void main(){ float n = fbm(vP*3.2 + vec3(0.,uTime*.04,uTime*.02)); float n2 = fbm3(vP*10. - uTime*.07);
-      float t = n*.65 + n2*.45;
-      vec3 col = mix(vec3(1.,.28,.03), vec3(1.,.82,.42), smoothstep(-.45,.55,t));
-      col = mix(col, vec3(1.,.97,.86), smoothstep(.35,.8,t));
-      float f = dot(normalize(vN), normalize(cameraPosition-vW));
-      col *= 2.6 + pow(1.-f,2.)*2.;
-      gl_FragColor = vec4(col,1.); }`
+    void main(){
+      vec3 p = vP;
+      float gran = snoise(p*38. + vec3(0., uTime*.25, uTime*.18))*.5 + snoise(p*80. - uTime*.3)*.25;
+      float large = fbm(p*3.2 + vec3(0., uTime*.03, uTime*.015));
+      float spotN = fbm3(p*4.5 + vec3(uTime*.006, 0., 0.) + 11.);
+      float lat = abs(p.y);
+      float spots = smoothstep(.52,.6, spotN) * smoothstep(.55,.2,lat) * smoothstep(.05,.18,lat);
+      float pen = smoothstep(.44,.52, spotN) * smoothstep(.55,.2,lat) * smoothstep(.05,.18,lat);
+      float t = large*.5 + gran*.35;
+      vec3 col = mix(vec3(1.,.55,.16), vec3(1.,.86,.55), smoothstep(-.5,.5,t));
+      col = mix(col, vec3(1.,.97,.9), smoothstep(.25,.9,t)*.6);
+      col += vec3(.5,.35,.15)*smoothstep(.36,.44,spotN)*(1.-pen)*.35;
+      col *= 1. - pen*.45; col *= 1. - spots*.75;
+      float mu = clamp(dot(normalize(vN), normalize(cameraPosition-vW)), 0., 1.);
+      col *= (1. - .62*(1. - pow(mu, .55))) * mix(vec3(1.,.72,.45), vec3(1.), pow(mu,.35));
+      gl_FragColor = vec4(col*3.4,1.); }`
 }));
 system.add(sun);
 const coronaA = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture([[0, 'rgba(255,240,210,1)'], [.12, 'rgba(255,196,110,.85)'], [.3, 'rgba(255,120,40,.25)'], [1, 'rgba(255,80,20,0)']]), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
 coronaA.scale.setScalar(58); coronaA.material.color.setScalar(1.4); system.add(coronaA);
 const coronaB = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture([[0, 'rgba(255,200,140,.5)'], [.2, 'rgba(255,140,60,.12)'], [1, 'rgba(255,90,30,0)']]), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
 coronaB.scale.setScalar(230); coronaB.material.color.setScalar(.35); system.add(coronaB);
+// corona streamers and limb prominences on a camera-facing card around the disc
+const coronaCard = new THREE.Mesh(new THREE.PlaneGeometry(64, 64), new THREE.ShaderMaterial({
+  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, uniforms: { uTime },
+  vertexShader: `varying vec2 vUv; void main(){ vUv = uv*2.-1.; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.); }`,
+  fragmentShader: NOISE + `uniform float uTime; varying vec2 vUv;
+    void main(){ float r = length(vUv)*3.2, a = atan(vUv.y, vUv.x);
+      if(r < .985) discard;
+      float rays = fbm3(vec3(cos(a)*3., sin(a)*3., uTime*.03))*.5 + .5;
+      rays = pow(rays, 1.6) * (.55 + .45*sin(a*9. + rays*6.));
+      float corona = exp(-(r-1.)*1.7) * (.3 + .7*rays) + exp(-(r-1.)*6.)*.25;
+      float promN = snoise(vec3(cos(a)*7., sin(a)*7., uTime*.05))*.5 + .5;
+      float prom = pow(smoothstep(.62,.95,promN), 2.) * exp(-(r-1.)*9.) * smoothstep(.985,1.02,r);
+      vec3 col = vec3(1.,.78,.55)*corona*.32 + vec3(1.,.28,.12)*prom*2.2;
+      gl_FragColor = vec4(col*smoothstep(3.2,1.4,r)*smoothstep(.985,1.06,r), 1.); }`
+}));
+system.add(coronaCard);
+// a restrained lens flare: sprites placed along the line from the Sun's screen position through the centre
+// (built by hand: three's Lensflare reads back the framebuffer, which the multisampled composer target can't do)
+const flare = (() => {
+  const ring = (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d');
+    const gr = g.createRadialGradient(64, 64, 38, 64, 64, 62); gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(.7, 'rgba(255,230,200,.4)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = gr; g.fillRect(0, 0, 128, 128); return new THREE.CanvasTexture(c); })();
+  const soft = glowTexture([[0, 'rgba(255,255,255,.85)'], [.35, 'rgba(255,220,180,.18)'], [1, 'rgba(255,200,150,0)']]);
+  const els = [[soft, .12, 0, [.8, .7, .6]], [soft, .025, .45, [.4, .55, 1]], [ring, .05, .7, [.45, .38, .65]], [soft, .018, .95, [.8, .6, .4]], [soft, .035, 1.25, [.35, .5, .8]]]
+    .map(([map, size, k, c]) => { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map, color: new THREE.Color(...c), blending: THREE.AdditiveBlending, depthTest: false, depthWrite: false, transparent: true }));
+      sp.renderOrder = 999; sp.frustumCulled = false; scene.add(sp); return { sp, size, k }; });
+  const ndc = new V3(), w = new V3();
+  return (on) => {
+    ndc.copy(C).project(camera);
+    const vis = on && ndc.z < 1 && Math.abs(ndc.x) < 1.15 && Math.abs(ndc.y) < 1.15;
+    const fade = vis ? clamp(1.3 - Math.hypot(ndc.x, ndc.y) * .6) : 0;
+    for (const e of els) {
+      e.sp.visible = fade > .01; if (!e.sp.visible) continue;
+      w.set(ndc.x * (1 - 2 * e.k), ndc.y * (1 - 2 * e.k), .2).unproject(camera);
+      const dist = w.distanceTo(camera.position);
+      e.sp.position.copy(w); e.sp.scale.setScalar(e.size * dist); e.sp.material.opacity = fade;
+    }
+  };
+})();
 
 const PLANETS = [
   { name: 'Mercury', rn: 'I', r: .9, d: 22, type: 2, seed: 3.1, scale: 3, a: '#4a4541', b: '#9b928a', c: '#34302d', atmo: '#000000',
@@ -1000,6 +1069,8 @@ var belt = new THREE.Group(); system.add(belt);
 /* ================= Starship ================= */
 /* licensed hull model ("SpaceX Starship" by Render Island, CC BY 4.0); false falls back to the procedural ship */
 const USE_MODEL = true;
+/* NASA's ISS (public domain, NASA VTAD), meshopt + WebP compressed; false falls back to the procedural habitat */
+const USE_ISS = true;
 const shipModel = USE_MODEL ? new Promise(res => new GLTFLoader().load('assets/models/starship.glb', g => res(g.scene), undefined, () => res(null))) : Promise.resolve(null);
 function makeShip({ blueprint = false } = {}) {
   const model = new THREE.Group();
@@ -1088,9 +1159,9 @@ function makeShip({ blueprint = false } = {}) {
       float len = pow(max(1.-t, 0.), ${kind === 'core' ? '1.9' : kind === 'haze' ? '1.1' : '1.35'}) * smoothstep(0., .035, t);
       float a = len * soft * mix(.55, 1.15, n);
       vec3 c = mix(vec3(.62,.72,1.), vec3(1.,.62,.26), smoothstep(.03,.3,t));
-      c = mix(c, vec3(.95,.25,.08), smoothstep(.3,1.,t));
+      c = mix(c, ${kind === 'haze' ? 'vec3(1.,.55,.3)' : 'vec3(.95,.25,.08)'}, smoothstep(.3,1.,t));
       ${kind === 'core' ? 'float dx = t*9.5; float dia = pow(max(0., cos(dx*3.14159)), 10.) * smoothstep(.55,.05,t) * soft; a += dia*.9; c = mix(c, vec3(1.,.9,.8), dia*.6);' : ''}
-      float gain = ${kind === 'core' ? '3.6' : kind === 'haze' ? '.55' : '1.8'};
+      float gain = ${kind === 'core' ? '3.6' : kind === 'haze' ? '.22' : '1.8'};
       gl_FragColor = vec4(min(c*a*uPower*gain, vec3(24.)), 1.); }`;
   const mkPlume = (r, h, kind) => {
     const m = new THREE.Mesh(new THREE.ConeGeometry(r, h, 64, 48, true), new THREE.ShaderMaterial({ uniforms: plumeU, vertexShader: plumeVS, fragmentShader: plumeFS(kind), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.FrontSide }));
@@ -1119,8 +1190,12 @@ function makeShip({ blueprint = false } = {}) {
     plumeU.uPower.value = flick; plume.visible = p > .005;
     bellMats.forEach(m => m.emissiveIntensity = p * 1.8);
     engLight.intensity = p * 120;
+    nozzleGlow.material.opacity = Math.min(1, p * 1.2); nozzleGlow.scale.setScalar(4.2 + p * 2.5 * (.9 + .1 * Math.sin(t * 50)));
   };
+  const nozzleGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture([[0, 'rgba(255,235,210,1)'], [.3, 'rgba(255,150,70,.5)'], [1, 'rgba(255,90,30,0)']]), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0 }));
+  nozzleGlow.position.y = -1.2; nozzleGlow.scale.setScalar(4.2); model.add(nozzleGlow);
   const setCharge = (c) => {
+    nozzleGlow.material.opacity = Math.max(nozzleGlow.material.opacity, c * .55);
     bellMats.forEach(m => m.emissiveIntensity = Math.max(m.emissiveIntensity, c * .9));
     engLight.intensity = Math.max(engLight.intensity, c * 30);
   };
@@ -1170,7 +1245,8 @@ let heroShip;
 
 /* ================= Shipyard ================= */
 const yard = new THREE.Group(); yard.position.copy(S); scene.add(yard);
-const navLights = [];
+const navLights = [], yardFloods = [];
+let clampArm;
 {
   // painted structural steel: grime, vertical run-off streaks and scratches, generated once on a canvas
   const steelTex = (() => {
@@ -1196,18 +1272,30 @@ const navLights = [];
   }
   // one clamp arm at the ship's pivot height, aimed at its axis: once the station turns the tower side-on,
   // this line is the ship's pitch axis, so the clamp point stays put while the ship swings round
+  clampArm = new THREE.Group(); yard.add(clampArm);
   { const d = Math.hypot(tx, tz), ux = tx / d, uz = tz / d, hull = USE_MODEL ? 1.45 : 1.25;
-    beam([tx - ux * w * .5, 0, tz - uz * w * .5], [ux * hull, 0, uz * hull], .16);
-    beam([tx - ux * w * .5, 1.1, tz - uz * w * .5], [ux * (hull + .5), 0, uz * (hull + .5)], .07);
-    beam([tx - ux * w * .5, -1.1, tz - uz * w * .5], [ux * (hull + .5), 0, uz * (hull + .5)], .07); }
-  // spine to habitat
-  beam([tx, -7, tz], [-40, -12, -18], .3); beam([tx, -5, tz], [-40, -10, -18], .15);
-  for (let k = 0; k < 8; k++) { const t = k / 7; beam([lerp(tx, -40, t), lerp(-7, -12, t), lerp(tz, -18, t)], [lerp(tx, -40, t), lerp(-5, -10, t), lerp(tz, -18, t)], .08); }
+    const rod = (a, b, t) => { const A = new V3(...a), B = new V3(...b), m = new THREE.Mesh(new THREE.CylinderGeometry(t / 2, t / 2, A.distanceTo(B), 10), null);
+      m.position.addVectors(A, B).multiplyScalar(.5); m.quaternion.setFromUnitVectors(UP, B.clone().sub(A).normalize()); clampArm.add(m); return m; };
+    clampArm.userData = { rods: [rod([tx - ux * w * .5, 0, tz - uz * w * .5], [ux * hull, 0, uz * hull], .16),
+      rod([tx - ux * w * .5, 1.1, tz - uz * w * .5], [ux * (hull + .5), 0, uz * (hull + .5)], .07),
+      rod([tx - ux * w * .5, -1.1, tz - uz * w * .5], [ux * (hull + .5), 0, uz * (hull + .5)], .07)], dir: new V3(ux, 0, uz) }; }
+  // spine to the habitat: a square lattice truss (four longerons, square frames, diagonal lacing)
+  const HUB = new V3(-30, -10.8, -14.5), HUB_YAW = .4;
+  { const A = new V3(tx, -7.4, tz), B = new V3(2.9, 0, 0).applyAxisAngle(UP, HUB_YAW).add(HUB);
+    const ax = B.clone().sub(A), L = ax.length(); ax.normalize();
+    const p1 = new V3().crossVectors(ax, UP).normalize().multiplyScalar(.45), p2 = new V3().crossVectors(p1, ax).normalize().multiplyScalar(.45);
+    const cornersS = [p1.clone().add(p2), p1.clone().sub(p2), p1.clone().negate().sub(p2), p1.clone().negate().add(p2)];
+    const at = (t, c) => A.clone().addScaledVector(ax, t).add(c).toArray();
+    cornersS.forEach(c => beam(at(0, c), at(L, c), .09));
+    const seg = 1.6, n = Math.floor(L / seg);
+    for (let k = 0; k <= n; k++) { const t0 = k * seg;
+      for (let q = 0; q < 4; q++) { beam(at(t0, cornersS[q]), at(t0, cornersS[(q + 1) % 4]), .04); if (k < n) beam(at(t0, cornersS[q]), at(t0 + seg, cornersS[(q + 1) % 4]), .03); } } }
   const geo = new THREE.CylinderGeometry(.5, .5, 1, 10, 1);
   const inst = new THREE.InstancedMesh(geo, truss, beams.length);
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new V3(), mid = new V3(), dir = new V3();
   beams.forEach(([a, b, t], i) => { mid.addVectors(a, b).multiplyScalar(.5); dir.subVectors(b, a); sc.set(t, dir.length(), t); q.setFromUnitVectors(UP, dir.normalize()); m4.compose(mid, q, sc); inst.setMatrixAt(i, m4); });
   yard.add(inst);
+  clampArm.userData.rods.forEach(m => m.material = truss);
   // gusset plates at every tower joint
   { const joints = []; for (let y = -9; y <= 13; y += 2) corners.forEach(([x, z]) => joints.push([x, y, z]));
     const jm = new THREE.InstancedMesh(new THREE.BoxGeometry(.36, .3, .36), trussDark, joints.length);
@@ -1228,25 +1316,47 @@ const navLights = [];
     for (const off of [-1.15, 1.15]) { const r = new THREE.Mesh(new THREE.CylinderGeometry(.025, .025, 2.3, 6), rail); r.rotation.z = Math.PI / 2; r.position.set(0, .45, off); const h = new THREE.Group(); h.add(r); for (const px of [-1.1, 0, 1.1]) { const post = new THREE.Mesh(new THREE.CylinderGeometry(.02, .02, .95, 6), rail); post.position.set(px, 0, off); h.add(post); } h.position.copy(deck.position).add(new V3(0, .5, 0)); h.rotation.y = deck.rotation.y + Math.PI / 2; yard.add(h); }
     const collarM = new THREE.MeshStandardMaterial({ map: hazard, metalness: .3, roughness: .5 }); hazard.repeat.set(3, 1);
     const collar = new THREE.Mesh(new THREE.CylinderGeometry(.13, .13, .7, 12, 1, true), collarM);
-    const hull = USE_MODEL ? 1.45 : 1.25; collar.position.set(ux * (hull + .55), 0, uz * (hull + .55)); collar.quaternion.setFromUnitVectors(UP, new V3(ux, 0, uz)); yard.add(collar);
-    const pad = new THREE.Mesh(new THREE.CylinderGeometry(.3, .3, .1, 20), trussDark); pad.position.set(ux * (hull + .05), 0, uz * (hull + .05)); pad.quaternion.setFromUnitVectors(UP, new V3(ux, 0, uz)); yard.add(pad); }
+    const hull = USE_MODEL ? 1.45 : 1.25; collar.position.set(ux * (hull + .55), 0, uz * (hull + .55)); collar.quaternion.setFromUnitVectors(UP, new V3(ux, 0, uz)); clampArm.add(collar);
+    const pad = new THREE.Mesh(new THREE.CylinderGeometry(.3, .3, .1, 20), trussDark); pad.position.set(ux * (hull + .05), 0, uz * (hull + .05)); pad.quaternion.setFromUnitVectors(UP, new V3(ux, 0, uz)); clampArm.add(pad); }
   // assembly hoops; nav lights are a small bulb plus a soft round halo (a bright box blooms into a square)
   const bulbGeo = new THREE.SphereGeometry(.075, 12, 8), bulbMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(1.6, 1.3, .85) });
   const haloMat = new THREE.SpriteMaterial({ map: glowTexture([[0, 'rgba(255,236,200,.9)'], [.25, 'rgba(255,200,130,.35)'], [1, 'rgba(255,170,90,0)']]), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true });
-  for (const [y, r] of [[-4.5, 7.5], [2.5, 6.4], [8.5, 5.2]]) {
+  // the hoops are open C-rings with the gap facing the tower (and they no longer spin), so nothing
+  // passes through the tower, its pipes or its equipment boxes. Angles are phi = atan2(z, x) in yard space.
+  const towerPhi = Math.atan2(tz, tx), GAP = .7;
+  const phi0 = towerPhi + GAP / 2, arc = Math.PI * 2 - GAP;
+  for (const [y, r] of [[-2.5, 7.5], [3, 6.4]]) {
     const hoop = new THREE.Group(); hoop.position.y = y;
-    const band = (rad, h, open) => new THREE.Mesh(new THREE.CylinderGeometry(rad, rad, h, 180, 1, open), truss);
-    const outer = band(r + .17, .24, true), inner = band(r - .17, .24, true); hoop.add(outer, inner);
-    for (const yy of [.12, -.12]) { const plate = new THREE.Mesh(new THREE.RingGeometry(r - .17, r + .17, 180, 1), truss); plate.rotation.x = yy > 0 ? -Math.PI / 2 : Math.PI / 2; plate.position.y = yy; hoop.add(plate); }
-    const track = new THREE.Mesh(new THREE.TorusGeometry(r - .26, .035, 6, 180), trussDark); track.rotation.x = Math.PI / 2; hoop.add(track);
+    // box-section rail: an annular sector extruded to height, laid flat (shape angle a = -phi after the tilt)
+    const sh = new THREE.Shape(); const ro = r + .17, ri = r - .17;
+    sh.absarc(0, 0, ro, -phi0, -phi0 - arc, true); sh.absarc(0, 0, ri, -phi0 - arc, -phi0, false);
+    const rail = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: .24, bevelEnabled: false, curveSegments: 160 }), truss);
+    rail.rotation.x = -Math.PI / 2; rail.position.y = -.12; hoop.add(rail);
+    const trackHold = new THREE.Group(); trackHold.rotation.y = -phi0; hoop.add(trackHold);
+    const track = new THREE.Mesh(new THREE.TorusGeometry(r - .26, .035, 6, 160, arc), trussDark); track.rotation.x = Math.PI / 2; trackHold.add(track);
     const houseGeo = new THREE.BoxGeometry(.2, .08, .2);
-    for (let i = 0; i < 18; i++) {
-      const a = i / 18 * Math.PI * 2, L = new THREE.Mesh(bulbGeo, bulbMat), H = new THREE.Sprite(haloMat), hs = new THREE.Mesh(houseGeo, trussDark);
+    for (let q = 0; q < 16; q++) {
+      const a = phi0 + (q + .5) / 16 * arc, L = new THREE.Mesh(bulbGeo, bulbMat), H = new THREE.Sprite(haloMat), hs = new THREE.Mesh(houseGeo, trussDark);
       hs.position.set(Math.cos(a) * r, .16, Math.sin(a) * r); hs.rotation.y = -a;
       L.position.set(Math.cos(a) * r, .22, Math.sin(a) * r); H.position.copy(L.position); H.scale.setScalar(.75); hoop.add(hs, L, H);
     }
-    hoop.userData.spin = (y > 0 ? 1 : -1) * .06; yard.add(hoop); navLights.push({ hoop });
+    // carriage: a clamp block gripping the tower's inner face, with an arm out to each end of the C
+    { const d = Math.hypot(tx, tz), ux = tx / d, uz = tz / d, vx = -uz, vz = ux, face = d - w / 2 - .28;
+      const car = new THREE.Mesh(new THREE.BoxGeometry(2.1, .55, .5), trussDark);
+      car.position.set(ux * face, 0, uz * face); car.rotation.y = Math.atan2(-vz, vx); hoop.add(car);
+      const shoe = new THREE.Mesh(new THREE.BoxGeometry(2.3, .3, .12), truss); shoe.position.set(ux * (face + .3), 0, uz * (face + .3)); shoe.rotation.y = car.rotation.y; hoop.add(shoe);
+      for (const sgn of [-1, 1]) {
+        const a = phi0 + (sgn < 0 ? arc : 0), end = new V3(Math.cos(a) * r, 0, Math.sin(a) * r);
+        const root = new V3(ux * face + vx * sgn * .95, 0, uz * face + vz * sgn * .95);
+        const len = root.distanceTo(end), arm = new THREE.Mesh(new THREE.BoxGeometry(.22, .22, len), truss);
+        arm.position.addVectors(root, end).multiplyScalar(.5); arm.quaternion.setFromUnitVectors(new V3(0, 0, 1), end.clone().sub(root).normalize()); hoop.add(arm);
+        const cap = new THREE.Mesh(new THREE.BoxGeometry(.4, .34, .4), trussDark); cap.position.copy(end); hoop.add(cap);
+      } }
+    hoop.userData.spin = 0; yard.add(hoop); navLights.push({ hoop });
   }
+  // guide rails up the tower's inner face for the hoop carriages
+  { const d = Math.hypot(tx, tz), ux = tx / d, uz = tz / d, vx = -uz, vz = ux, face = d - w / 2 - .02;
+    for (const sgn of [-1, 1]) { const g = new THREE.Mesh(new THREE.BoxGeometry(.12, 22, .1), truss); g.position.set(ux * face + vx * sgn * .75, 2, uz * face + vz * sgn * .75); yard.add(g); } }
   // platform
   // deck: steel plates, bolts, hazard chevrons round the rim, a painted landing ring and bay markings
   const deckTex = (() => {
@@ -1265,18 +1375,68 @@ const navLights = [];
   for (let k = 0; k < 6; k++) { const rib = new THREE.Mesh(new THREE.BoxGeometry(.25, .7, 7.2), trussDark); rib.rotation.y = k * Math.PI / 3; rib.position.y = -9.9; yard.add(rib); }
   const platEdge = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.CylinderGeometry(7.55, 7.55, .51, 6)), new THREE.LineBasicMaterial({ color: new THREE.Color(1.8, 1.3, .6) }));
   platEdge.position.y = -9.3; yard.add(platEdge);
-  // habitat modules and solar arrays at the end of the spine
-  const hab = new THREE.MeshStandardMaterial({ color: 0xd8d6cf, metalness: .3, roughness: .55 });
-  for (let k = 0; k < 3; k++) { const m = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.4, 5, 32), hab); m.rotation.z = Math.PI / 2; m.rotation.y = .4; m.position.set(-30 - k * 5.2, -10.8 + k * .1, -14.5 - k * 1.8); yard.add(m); }
-  const pc = document.createElement('canvas'); pc.width = 128; pc.height = 256; const pg = pc.getContext('2d');
-  pg.fillStyle = '#0a1430'; pg.fillRect(0, 0, 128, 256); pg.strokeStyle = '#27407a'; pg.lineWidth = 2;
-  for (let x = 0; x <= 128; x += 16) { pg.beginPath(); pg.moveTo(x, 0); pg.lineTo(x, 256); pg.stroke(); }
-  for (let y = 0; y <= 256; y += 16) { pg.beginPath(); pg.moveTo(0, y); pg.lineTo(128, y); pg.stroke(); }
-  const ptex = new THREE.CanvasTexture(pc); ptex.colorSpace = THREE.SRGBColorSpace;
-  const panelM = new THREE.MeshStandardMaterial({ map: ptex, metalness: .6, roughness: .28, side: THREE.DoubleSide });
-  for (const s of [-1, 1]) for (let k = 0; k < 2; k++) {
-    const p = new THREE.Mesh(new THREE.PlaneGeometry(4.5, 16), panelM); p.rotation.x = -Math.PI / 2 + .5; p.rotation.z = .4;
-    p.position.set(-34 - k * 7, -11, -16 + s * 10); yard.add(p);
+  // habitat: quilted-blanket pressure modules on berthing rings, a node, docking port, radiators, a dish,
+  // and two solar wings per side (cell blankets on a mast, gold Kapton backs)
+  if (USE_ISS) {
+    const gl = new GLTFLoader(); gl.setMeshoptDecoder(MeshoptDecoder);
+    gl.load('assets/models/iss.glb', (g) => {
+      const iss = g.scene; iss.updateMatrixWorld(true);
+      const box = new THREE.Box3().setFromObject(iss), size = box.getSize(new V3()), c = box.getCenter(new V3());
+      const k = 36 / Math.max(size.x, size.y, size.z);   // span the old habitat's footprint
+      const holder = new THREE.Group(); holder.position.copy(HUB); holder.rotation.y = HUB_YAW; yard.add(holder);
+      iss.scale.setScalar(k); iss.position.copy(c).multiplyScalar(-k); holder.add(iss);
+      iss.traverse(o => { if (o.isMesh) { o.frustumCulled = false; if (o.material) o.material.envMapIntensity = .8; } });
+    });
+  } else { const hub = new THREE.Group(); hub.position.copy(HUB); hub.rotation.y = HUB_YAW; yard.add(hub);
+    const quilt = (() => { const W = 512, c = document.createElement('canvas'); c.width = c.height = W; const g = c.getContext('2d');
+      g.fillStyle = '#e4e1d8'; g.fillRect(0, 0, W, W);
+      for (let i = 0; i < 260; i++) { const x = Math.random() * W, y = Math.random() * W, r = 8 + Math.random() * 40, gr = g.createRadialGradient(x, y, 0, x, y, r); const d = Math.random() < .5; gr.addColorStop(0, d ? 'rgba(90,80,60,.10)' : 'rgba(255,255,255,.35)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2); }
+      g.strokeStyle = 'rgba(120,110,95,.45)'; g.lineWidth = 2; for (let k = 0; k <= W; k += 64) { g.beginPath(); g.moveTo(k, 0); g.lineTo(k, W); g.stroke(); g.beginPath(); g.moveTo(0, k); g.lineTo(W, k); g.stroke(); }
+      g.fillStyle = 'rgba(90,80,70,.5)'; for (let x = 32; x < W; x += 64) for (let y = 32; y < W; y += 64) { g.beginPath(); g.arc(x, y, 2.2, 0, 7); g.fill(); }
+      const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(5, 3); t.anisotropy = 8; return t; })();
+    const blanket = new THREE.MeshStandardMaterial({ map: quilt, roughness: .85, metalness: 0 });
+    const gold = new THREE.MeshStandardMaterial({ color: 0xd9a646, metalness: .9, roughness: .3 });
+    const prof = [[0, -2.75], [.85, -2.7], [1.28, -2.5], [1.4, -2.25], [1.4, 2.25], [1.28, 2.5], [.85, 2.7], [0, 2.75]].map(([x, y]) => new THREE.Vector2(x, y));
+    const modGeo = new THREE.LatheGeometry(prof, 48), ringGeo = new THREE.TorusGeometry(1.42, .07, 8, 48), railGeo = new THREE.CylinderGeometry(.025, .025, 4.2, 6);
+    const winM = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.4, 1.7, 1) });
+    for (let k = 0; k < 3; k++) {
+      const m = new THREE.Group(); m.position.x = -k * 5.9; m.rotation.z = Math.PI / 2; hub.add(m);
+      m.add(new THREE.Mesh(modGeo, blanket));
+      for (const y of [-2.28, 2.28]) { const r = new THREE.Mesh(ringGeo, trussDark); r.rotation.x = Math.PI / 2; r.position.y = y; m.add(r); }
+      for (let q = 0; q < 4; q++) { const a = q * Math.PI / 2 + .4, rl = new THREE.Mesh(railGeo, gold); rl.position.set(Math.cos(a) * 1.5, 0, Math.sin(a) * 1.5); m.add(rl); }
+      for (let q = 0; q < 3; q++) { const w = new THREE.Mesh(new THREE.CircleGeometry(.11, 14), winM); const y = -1.2 + q * 1.2; w.position.set(0, y, 1.405); m.add(w); }
+      { const node = new THREE.Mesh(new THREE.CylinderGeometry(1.05, 1.05, .9, 32), trussDark); node.position.y = -2.95; m.add(node); } // joint toward the spine side
+    }
+    // docking port with a lit collar at the far end
+    const port = new THREE.Mesh(new THREE.CylinderGeometry(.75, .8, .8, 24), trussDark); port.rotation.z = Math.PI / 2; port.position.x = -2 * 5.9 - 3.1; hub.add(port);
+    const collarL = new THREE.Mesh(new THREE.TorusGeometry(.78, .05, 8, 40), new THREE.MeshBasicMaterial({ color: new THREE.Color(.4, 2.6, 1.4) })); collarL.rotation.y = Math.PI / 2; collarL.position.x = -2 * 5.9 - 3.5; hub.add(collarL);
+    // radiators, edge-on to the arrays
+    const radTex = (() => { const c = document.createElement('canvas'); c.width = 64; c.height = 256; const g = c.getContext('2d'); g.fillStyle = '#eceae4'; g.fillRect(0, 0, 64, 256); g.fillStyle = 'rgba(140,135,125,.5)'; for (let y = 0; y < 256; y += 16) g.fillRect(0, y, 64, 2); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })();
+    const radM = new THREE.MeshStandardMaterial({ map: radTex, roughness: .6, metalness: .1, side: THREE.DoubleSide });
+    for (const sgn of [-1, 1]) { const r = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 5), radM); r.position.set(-5.9, sgn * 3.6, 0); r.rotation.x = Math.PI / 2; r.rotation.z = Math.PI / 2; hub.add(r);
+      const arm = new THREE.Mesh(new THREE.CylinderGeometry(.05, .05, 1.2, 6), truss); arm.position.set(-5.9, sgn * 2, 0); hub.add(arm); }
+    // dish antenna on a short boom
+    const boom = new THREE.Mesh(new THREE.CylinderGeometry(.05, .05, 2.2, 6), truss); boom.position.set(1, 2.2, 0); hub.add(boom);
+    const dish = new THREE.Mesh(new THREE.SphereGeometry(.9, 28, 10, 0, Math.PI * 2, 0, Math.PI / 3.2), new THREE.MeshStandardMaterial({ color: 0xf2f0ea, roughness: .45, metalness: .2, side: THREE.DoubleSide }));
+    dish.position.set(1, 3.3, 0); dish.rotation.set(Math.PI + .5, 0, .3); hub.add(dish);
+    // solar wings
+    const cells = (() => { const c = document.createElement('canvas'); c.width = 256; c.height = 1024; const g = c.getContext('2d');
+      g.fillStyle = '#c9ccd4'; g.fillRect(0, 0, 256, 1024);
+      for (let y = 0; y < 1024; y += 16) for (let x = 0; x < 256; x += 32) { const gr = g.createLinearGradient(x, y, x + 30, y + 14); gr.addColorStop(0, '#0d1d3f'); gr.addColorStop(.5, '#16305e'); gr.addColorStop(1, '#0a1733'); g.fillStyle = gr; g.fillRect(x + 1, y + 1, 30, 14); }
+      g.fillStyle = '#9aa0ab'; for (let y = 0; y < 1024; y += 128) g.fillRect(0, y, 256, 3);
+      const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t; })();
+    const cellM = new THREE.MeshStandardMaterial({ map: cells, metalness: .55, roughness: .28, envMapIntensity: 1.2 });
+    const backM = new THREE.MeshStandardMaterial({ color: 0xc8963c, metalness: .85, roughness: .38 });
+    const boxM = new THREE.MeshStandardMaterial({ color: 0xd9d6ce, roughness: .6, metalness: .2 });
+    for (const side of [-1, 1]) for (const dx of [-2.35, 2.35]) {
+      const wing = new THREE.Group(); wing.position.set(-5.9 + dx, 0, side * 2.1); wing.rotation.z = .5; hub.add(wing);
+      const mast = new THREE.Mesh(new THREE.CylinderGeometry(.06, .06, 16.6, 8), truss); mast.rotation.x = Math.PI / 2; mast.position.z = side * 8.3; wing.add(mast);
+      for (const bx of [-1.2, 1.2]) {
+        const front = new THREE.Mesh(new THREE.PlaneGeometry(2.1, 15.6), cellM); front.rotation.x = -Math.PI / 2; front.position.set(bx, .012, side * 8.5); wing.add(front);
+        const back = new THREE.Mesh(new THREE.PlaneGeometry(2.1, 15.6), backM); back.rotation.x = Math.PI / 2; back.position.set(bx, -.012, side * 8.5); wing.add(back);
+      }
+      for (const z of [.45, 16.6]) { const b = new THREE.Mesh(new THREE.BoxGeometry(4.7, .22, .35), boxM); b.position.set(0, 0, side * z); wing.add(b); }
+    }
   }
   // blinking beacons
   for (const [p, c] of [[[tx, 13.4, tz], [5, .35, .25]], [[-40, -9.3, -18], [.3, 5, .9]], [[7.5, -9.2, 0], [5, .35, .25]], [[-7.5, -9.2, 0], [.3, 5, .9]], [[0, -9.2, 7.5], [4, 4, 4]]]) {
@@ -1290,7 +1450,7 @@ const navLights = [];
   const lensM = new THREE.MeshBasicMaterial({ color: new THREE.Color(3, 2.6, 2) });
   for (const [pos, aim] of [[[tx + 1, 11.2, tz + .9], [0, 5, 0]], [[5.8, -8.6, 3.4], [0, -2, 0]], [[-4.2, -8.6, 5.6], [0, 1, 0]]]) {
     const from = new V3(...pos), to = new V3(...aim), dir = to.clone().sub(from), len = dir.length();
-    const sp = new THREE.SpotLight(0xffe2bf, 380, 40, .34, .65, 2); sp.position.copy(from); sp.target.position.copy(to); yard.add(sp, sp.target);
+    const sp = new THREE.SpotLight(0xffe2bf, 380, 40, .34, .65, 2); sp.position.copy(from); sp.target.position.copy(to); yard.add(sp, sp.target); yardFloods.push(sp);
     const head = new THREE.Group(); head.position.copy(from); head.quaternion.setFromUnitVectors(new V3(0, -1, 0), dir.clone().normalize()); yard.add(head);
     const can = new THREE.Mesh(new THREE.CylinderGeometry(.24, .3, .45, 16), trussDark); head.add(can);
     const lens = new THREE.Mesh(new THREE.CircleGeometry(.23, 20), lensM); lens.rotation.x = Math.PI / 2; lens.position.y = -.231; head.add(lens);
@@ -1300,6 +1460,30 @@ const navLights = [];
   const rim = new THREE.PointLight(0x7fb0ff, 70, 0, 2); rim.position.set(5, 11, -6); yard.add(rim);
   const low = new THREE.PointLight(0xffa060, 22, 0, 2); low.position.set(3, -7, 3); yard.add(low);
 }
+
+/* ================= ignition ice flakes ================= */
+const FLAKE_N = narrow ? 140 : 280;
+const flakes = (() => {
+  const g = new THREE.BufferGeometry(), pos = new Float32Array(FLAKE_N * 3), al = new Float32Array(FLAKE_N);
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('aA', new THREE.BufferAttribute(al, 1));
+  const mat = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, uniforms: { uPR: { value: DPR } },
+    vertexShader: `attribute float aA; uniform float uPR; varying float vA; void main(){ vA = aA; vec4 mv = modelViewMatrix*vec4(position,1.); gl_Position = projectionMatrix*mv; gl_PointSize = clamp(26.*uPR/-mv.z, 1., 6.*uPR); }`,
+    fragmentShader: `varying float vA; void main(){ float d = length(gl_PointCoord-.5); float a = smoothstep(.5,.1,d)*vA; gl_FragColor = vec4(vec3(.85,.93,1.)*a*1.6, a); }` });
+  const pts = new THREE.Points(g, mat); pts.frustumCulled = false; scene.add(pts);
+  const P = Array.from({ length: FLAKE_N }, () => { const a = Math.random() * Math.PI * 2, out = .35 + Math.random() * 1.1;
+    return { e: .135 + Math.random() * .16, h: -6.4 + Math.pow(Math.random(), .7) * 11, a, v: new V3(Math.cos(a) * out, -(.2 + Math.random() * .9), Math.sin(a) * out), life: 2.2 + Math.random() * 2.4 }; });
+  const o = new V3();
+  return (sp, on) => {
+    pts.visible = on; if (!on) return;
+    for (let k = 0; k < FLAKE_N; k++) {
+      const f = P[k], age = (sp - f.e) / .027;
+      if (age <= 0 || age > f.life) { al[k] = 0; continue; }
+      o.set(Math.cos(f.a) * 1.5, f.h, Math.sin(f.a) * 1.5).addScaledVector(f.v, age * 1.4).applyQuaternion(qTravel).add(S);
+      pos.set([o.x, o.y, o.z], k * 3); al[k] = Math.min(1, age * 3) * (1 - age / f.life);
+    }
+    g.attributes.position.needsUpdate = true; g.attributes.aA.needsUpdate = true;
+  };
+})();
 
 /* ================= Warp streaks ================= */
 const WARP_N = 520;
@@ -1348,11 +1532,16 @@ composer.addPass(new ShaderPass({
 const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth / 2, innerHeight / 2), .72, .5, .86);
 composer.addPass(bloom);
 const finalPass = new ShaderPass({
-  uniforms: { tDiffuse: { value: null }, uCA: { value: .003 }, uVig: { value: .55 } },
+  uniforms: { tDiffuse: { value: null }, uCA: { value: .003 }, uVig: { value: .55 }, uTime, uShim: { value: new THREE.Vector2(-9, -9) }, uShimDir: { value: new THREE.Vector2(0, -1) }, uShimAmt: { value: 0 }, uAspect: { value: 1 } },
   vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.); }`,
-  fragmentShader: `uniform sampler2D tDiffuse; uniform float uCA, uVig; varying vec2 vUv;
-    void main(){ vec2 c = vUv-.5; float d = length(c); vec2 o = c*uCA*d*2.;
-      vec3 col = vec3(texture2D(tDiffuse, vUv+o).r, texture2D(tDiffuse, vUv).g, texture2D(tDiffuse, vUv-o).b);
+  fragmentShader: `uniform sampler2D tDiffuse; uniform float uCA, uVig, uTime, uShimAmt, uAspect; uniform vec2 uShim, uShimDir; varying vec2 vUv;
+    void main(){ vec2 c = vUv-.5; float d = length(c); vec2 uv = vUv;
+      // heat shimmer: a wobbling lens of hot gas trailing from the nozzles along the exhaust direction
+      if(uShimAmt > .001){ vec2 q = (vUv - uShim)*vec2(uAspect, 1.); float along = dot(q, uShimDir), across = dot(q, vec2(-uShimDir.y, uShimDir.x));
+        float m = along > -.02 ? smoothstep(-.02, .03, along) * exp(-along*along*9.) * exp(-across*across*(90./max(1.+along*14., 1.))) : 0.;
+        uv += vec2(sin(vUv.y*170. - uTime*21.) + sin(vUv.x*120. + uTime*17.), cos(vUv.x*150. - uTime*19.)) * .0022 * uShimAmt * m; }
+      vec2 o = c*uCA*d*2.;
+      vec3 col = vec3(texture2D(tDiffuse, uv+o).r, texture2D(tDiffuse, uv).g, texture2D(tDiffuse, uv-o).b);
       col *= 1. - uVig*smoothstep(.3,.95,d);
       gl_FragColor = vec4(col,1.); }`
 });
@@ -1972,7 +2161,7 @@ function tick() {
     const dp = dockProgress(i, sy, sp);
     yard.rotation.y = yardTurn * smooth(0, 1, dp);
     // the middle hoop slides up clear of the nose, arriving as the launch section pins (T-10), while the station keeps turning
-    navLights[1].hoop.position.y = 2.5 + 3.8 * smooth(0, 1, dp / dockF0());
+    navLights[1].hoop.position.y = 3 + 5.3 * smooth(0, 1, dp / dockF0()); // 3 -> 8.3
     shipPivot.position.copy(st.pos); shipPivot.quaternion.copy(st.quat);
     ship.setPower(i === 4 ? st.power : 0, t);
     // pre-ignition glow only once the ship has swung to its departure attitude (T-6 onward)
@@ -2036,6 +2225,21 @@ function tick() {
   camera.setViewOffset(innerWidth, innerHeight, -camOff * innerWidth, 0, innerWidth, innerHeight);
   camera.updateProjectionMatrix();
   sky.position.copy(camera.position);
+  camera.updateMatrixWorld();
+  coronaCard.quaternion.copy(camera.quaternion);
+  flare(i >= 4 && i !== 6);
+  /* launch dressing: clamp retracts over the last second, floods flicker in the blast, flakes, heat shimmer */
+  { const lsp = i < 4 ? 0 : i === 4 ? sp : 1, pw = i === 4 && st ? st.power : 0;
+    clampArm.position.copy(clampArm.userData.dir).multiplyScalar(-1.5 * easeIO(smooth(.243, .268, lsp)));
+    yardFloods.forEach(f => f.intensity = 380 * (1 - pw * (.18 + .22 * Math.random())));
+    flakes(lsp, i === 4 && !reduced);
+    const U = finalPass.uniforms; U.uAspect.value = innerWidth / innerHeight;
+    if (pw > .01 && ship && !reduced) {
+      const a = ship.model.localToWorld(new V3(0, -1.6, 0)).project(camera), b = ship.model.localToWorld(new V3(0, -9, 0)).project(camera);
+      U.uShim.value.set(a.x * .5 + .5, a.y * .5 + .5);
+      U.uShimDir.value.set((b.x - a.x) * U.uAspect.value, b.y - a.y).normalize();
+      U.uShimAmt.value = a.z < 1 ? pw : 0;
+    } else U.uShimAmt.value = 0; }
   finalPass.uniforms.uCA.value = .0007 + warpAmt * .005;
 
   // chapter 04 copy fades out shortly before the pinned view starts scrolling away
