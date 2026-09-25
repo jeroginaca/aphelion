@@ -496,6 +496,7 @@ footer a:hover{color:var(--bone)}
 
 <footer>
   <span>© 2026 Aphelion Interplanetary Agency — a work of fiction</span>
+  <span>Planet textures: <a href="https://www.solarsystemscope.com/textures/" target="_blank" rel="noopener">Solar System Scope</a>, CC BY 4.0, based on NASA imagery · Ship model: <a href="https://sketchfab.com/3d-models/spacex-starship-83d9d7d5e9c54d768f0c2c99d5ad50aa" target="_blank" rel="noopener">Render Island</a>, CC BY 4.0</span>
 </footer>
 
 <script type="importmap">
@@ -509,6 +510,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 /* ================= helpers ================= */
 const $ = (s, r = document) => r.querySelector(s);
@@ -578,6 +580,7 @@ const DPR = Math.min(devicePixelRatio, narrow ? 1.5 : 1.75);
 renderer.setPixelRatio(DPR);
 renderer.setSize(innerWidth, innerHeight);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.localClippingEnabled = true;
 renderer.toneMappingExposure = 1.05;
 
 const scene = new THREE.Scene();
@@ -714,13 +717,14 @@ const starMat = new THREE.ShaderMaterial({
 }
 
 /* ================= planets ================= */
-const planetVS = `varying vec3 vN; varying vec3 vW; varying vec3 vP;
-  void main(){ vP = normalize(position); vN = normalize(mat3(modelMatrix)*normal);
+const planetVS = `varying vec3 vN; varying vec3 vW; varying vec3 vP; varying vec2 vUv;
+  void main(){ vUv = uv; vP = normalize(position); vN = normalize(mat3(modelMatrix)*normal);
     vec4 w = modelMatrix*vec4(position,1.); vW = w.xyz; gl_Position = projectionMatrix*viewMatrix*w; }`;
 const planetFS = NOISE + `
   uniform float uTime, uType, uSeed, uScale, uStorm;
   uniform vec3 uSunPos, uColA, uColB, uColC, uAtmo;
-  varying vec3 vN; varying vec3 vW; varying vec3 vP;
+  uniform sampler2D uMap, uNight, uClouds; uniform float uHasMap, uEarthTex;
+  varying vec3 vN; varying vec3 vW; varying vec3 vP; varying vec2 vUv;
   void main(){
     vec3 L = normalize(uSunPos - vW); vec3 V = normalize(cameraPosition - vW); vec3 N = normalize(vN);
     float ndl = dot(N, L);
@@ -758,17 +762,50 @@ const planetFS = NOISE + `
       float cr = smoothstep(.55,.62, fbm3(p*7.+2.)*.5+.5); col *= 1.-cr*.35;
       col = mix(col, vec3(.9), uStorm*smoothstep(.82,.9,abs(vP.y)));
     }
+    // photographic maps (NASA-derived, Solar System Scope) replace the procedural surface once they've loaded
+    if(uHasMap > .5){
+      vec3 day = texture2D(uMap, vUv).rgb;
+      if(uEarthTex > .5){
+        float c = texture2D(uClouds, vUv + vec2(uTime*.0015, 0.)).r;
+        float cs = texture2D(uClouds, vUv + vec2(uTime*.0015 - .002, .0015)).r;          // cloud shadow, offset toward the light
+        float ocean = smoothstep(.015,.09, day.b - day.r) * (1. - smoothstep(.35,.6, day.g));
+        vec3 H = normalize(L+V); spec = pow(max(dot(N,H),0.),60.)*ocean*(1.-c)*1.4;
+        float night = smoothstep(.1,-.2,ndl);
+        emis = texture2D(uNight, vUv).rgb*vec3(1.,.8,.55)*night*2.2*(1.-c*.9);
+        col = day*(1.-cs*.35);
+        col = mix(col, vec3(.95), c*.95);
+      } else col = day*1.05;
+    }
     vec3 lit = col*(diff*1.2 + .018) + spec*vec3(1.,.93,.8) + emis;
     float fres = pow(1.-max(dot(N,V),0.), 3.);
     lit += uAtmo*fres*smoothstep(-.35,.55,ndl)*1.1;
     gl_FragColor = vec4(lit,1.);
   }`;
+/* texture maps: planets fall back to their procedural look until each image arrives */
+const BLANK = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1); BLANK.needsUpdate = true;
+const texLoader = new THREE.TextureLoader();
+function tex(file, srgb = true) {
+  return new Promise(res => texLoader.load('assets/tex/' + file, t => {
+    if (srgb) t.colorSpace = THREE.SRGBColorSpace;
+    t.anisotropy = renderer.capabilities.getMaxAnisotropy(); res(t);
+  }, undefined, () => res(null)));
+}
+async function skin(mat, file, earthMaps) {
+  const map = await tex(file); if (!map) return;
+  mat.uniforms.uMap.value = map;
+  if (earthMaps) {
+    const [night, clouds] = await Promise.all([tex('earth_nightmap.jpg'), tex('earth_clouds.jpg', false)]);
+    if (night && clouds) { mat.uniforms.uNight.value = night; mat.uniforms.uClouds.value = clouds; mat.uniforms.uEarthTex.value = 1; }
+  }
+  mat.uniforms.uHasMap.value = 1;
+}
 function planetMat(o) {
   return new THREE.ShaderMaterial({
     uniforms: {
       uTime, uType: { value: o.type }, uSeed: { value: o.seed ?? 1 }, uScale: { value: o.scale ?? 2 }, uStorm: { value: o.storm ?? 0 },
       uSunPos: { value: C }, uColA: { value: new THREE.Color(o.a ?? '#777') }, uColB: { value: new THREE.Color(o.b ?? '#999') },
-      uColC: { value: new THREE.Color(o.c ?? '#555') }, uAtmo: { value: new THREE.Color(o.atmo ?? '#000') }
+      uColC: { value: new THREE.Color(o.c ?? '#555') }, uAtmo: { value: new THREE.Color(o.atmo ?? '#000') },
+      uMap: { value: BLANK }, uNight: { value: BLANK }, uClouds: { value: BLANK }, uHasMap: { value: 0 }, uEarthTex: { value: 0 }
     }, vertexShader: planetVS, fragmentShader: planetFS
   });
 }
@@ -793,9 +830,11 @@ const earthTilt = new THREE.Group(); earthTilt.rotation.z = 0.41; earthTilt.rota
 const earth = new THREE.Mesh(new THREE.SphereGeometry(10, 160, 120), planetMat({ type: 0, seed: 1.7, scale: 1.55, atmo: '#4d8dff' }));
 earth.rotation.y = 2.2;
 earthTilt.add(earth);
+skin(earth.material, 'earth_daymap.jpg', true);
 earthTilt.add(atmosphere(10, '#5b9bff', 1.6, 1.09));
 const moon = new THREE.Mesh(new THREE.SphereGeometry(2.3, 64, 48), planetMat({ type: 2, seed: 4.2, scale: 2.6, a: '#3f3e3d', b: '#8c8a86', c: '#5a5856' }));
 moon.position.set(-34, 12, -52); scene.add(moon);
+skin(moon.material, 'moon.jpg');
 
 /* orbital traffic around Earth */
 const SAT_N = 520;
@@ -876,7 +915,8 @@ const PLANETS = [
 const pickables = [];
 PLANETS.forEach((P, k) => {
   const holder = new THREE.Group(); system.add(holder);
-  const mesh = new THREE.Mesh(new THREE.SphereGeometry(P.r, 72, 54), planetMat(P));
+  const mesh = new THREE.Mesh(new THREE.SphereGeometry(P.r, 96, 72), planetMat(P));
+  skin(mesh.material, P.name === 'Earth' ? 'earth_daymap.jpg' : P.name.toLowerCase() + '.jpg', P.name === 'Earth');
   mesh.rotation.z = k === 6 ? 1.7 : .3 * Math.sin(k * 3.1);
   holder.add(mesh);
   if (P.atmo !== '#000000') holder.add(atmosphere(P.r, P.atmo, P.type === 0 ? 1.6 : .9, 1.12));
@@ -884,17 +924,22 @@ PLANETS.forEach((P, k) => {
     const rg = new THREE.RingGeometry(P.r * 1.3, P.r * 2.35, 160, 1);
     const rm = new THREE.ShaderMaterial({
       transparent: true, side: THREE.DoubleSide, depthWrite: false,
-      uniforms: { uIn: { value: P.r * 1.3 }, uOut: { value: P.r * 2.35 } },
-      vertexShader: `varying vec3 vL; void main(){ vL = position; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.); }`,
-      fragmentShader: `uniform float uIn,uOut; varying vec3 vL;
-        float h(float x){return fract(sin(x*127.1)*43758.5453);}
+      uniforms: { uIn: { value: P.r * 1.3 }, uOut: { value: P.r * 2.35 }, uRing: { value: BLANK }, uHasRing: { value: 0 }, uSunPos: { value: C }, uCenter: { value: new V3() }, uR: { value: P.r } },
+      vertexShader: `varying vec3 vL; varying vec3 vW; void main(){ vL = position; vec4 w = modelMatrix*vec4(position,1.); vW = w.xyz; gl_Position = projectionMatrix*viewMatrix*w; }`,
+      fragmentShader: `uniform float uIn,uOut,uHasRing,uR; uniform sampler2D uRing; uniform vec3 uSunPos,uCenter; varying vec3 vL; varying vec3 vW;
         void main(){ float t = (length(vL.xy)-uIn)/(uOut-uIn);
           float b = .55+.45*sin(t*44.)*sin(t*17.+1.)+.12*sin(t*97.);
           float gap = smoothstep(.56,.575,t)*(1.-smoothstep(.62,.635,t));
           float a = clamp(b,0.,1.)*smoothstep(0.,.08,t)*smoothstep(1.,.9,t)*(1.-gap*.9)*.85;
           vec3 col = mix(vec3(.62,.52,.38), vec3(.95,.88,.72), b);
-          gl_FragColor = vec4(col*.9, a); }`
+          if(uHasRing > .5){ vec4 r = texture2D(uRing, vec2(clamp(t,0.,1.), .5)); col = r.rgb; a = r.a; }
+          // the planet's shadow: does the ray from here toward the Sun pass through the globe?
+          vec3 L = normalize(uSunPos - vW), oc = vW - uCenter; float bb = dot(oc, L), cc = dot(oc,oc) - uR*uR;
+          float sh = (bb < 0. && bb*bb - cc > 0.) ? smoothstep(0., uR*.12, bb*bb - cc) : 0.;
+          gl_FragColor = vec4(col*.95*(1.-sh*.92), a); }`
     });
+    tex('saturn_ring.png').then(t => { if (t) { rm.uniforms.uRing.value = t; rm.uniforms.uHasRing.value = 1; } });
+    P.ringMat = rm;
     const ring = new THREE.Mesh(rg, rm); ring.rotation.x = -Math.PI / 2 + .45; ring.rotation.y = .15; holder.add(ring);
   }
   const orbit = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(Array.from({ length: 256 }, (_, i) => { const a = i / 256 * Math.PI * 2; return new V3(Math.cos(a) * P.d, 0, Math.sin(a) * P.d); })),
@@ -953,6 +998,9 @@ var belt = new THREE.Group(); system.add(belt);
 }
 
 /* ================= Starship ================= */
+/* licensed hull model ("SpaceX Starship" by Render Island, CC BY 4.0); false falls back to the procedural ship */
+const USE_MODEL = true;
+const shipModel = USE_MODEL ? new Promise(res => new GLTFLoader().load('assets/models/starship.glb', g => res(g.scene), undefined, () => res(null))) : Promise.resolve(null);
 function makeShip({ blueprint = false } = {}) {
   const model = new THREE.Group();
   const parts = []; const bellMats = [];
@@ -1031,19 +1079,24 @@ function makeShip({ blueprint = false } = {}) {
   const plumeU = { uTime, uPower: { value: 0 } };
   const plumeVS = `varying vec2 vUv; varying vec3 vNV; varying vec3 vVP;
     void main(){ vUv = uv; vNV = normalize(normalMatrix*normal); vec4 mv = modelViewMatrix*vec4(position,1.); vVP = mv.xyz; gl_Position = projectionMatrix*mv; }`;
-  const plumeFS = (core) => NOISE + `uniform float uTime, uPower; varying vec2 vUv; varying vec3 vNV; varying vec3 vVP;
+  // exhaust: soft-edged turbulent cones (no hard bands), a few shock diamonds in the core, and a wide faint haze
+  const plumeFS = (kind) => NOISE + `uniform float uTime, uPower; varying vec2 vUv; varying vec3 vNV; varying vec3 vVP;
     void main(){ float t = clamp(vUv.y, 0., 1.); float f = abs(dot(normalize(vNV), normalize(-vVP)));
-      float n = snoise(vec3(vUv.x*7., t*5.-uTime*10., uTime*1.3))*.5+.5;
-      float a = pow(max(1.-t, 0.), ${core ? '2.2' : '1.5'})*f*f*(.5+.5*n);
-      vec3 c = mix(vec3(.7,.8,1.), vec3(1.,.55,.2), smoothstep(.02,.35,t));
-      c = mix(c, vec3(1.,.22,.07), smoothstep(.35,1.,t));
-      ${core ? 'float dia = smoothstep(.55,1.,sin(t*38.-uTime*3.)*.5+.5)*(1.-t)*.9; a += dia*f;' : ''}
-      gl_FragColor = vec4(c*a*uPower*${core ? '4.2' : '2.2'}, 1.); }`;
-  const mkPlume = (r, h, core) => {
-    const m = new THREE.Mesh(new THREE.ConeGeometry(r, h, 40, 20, true), new THREE.ShaderMaterial({ uniforms: plumeU, vertexShader: plumeVS, fragmentShader: plumeFS(core), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
+      float soft = pow(f, ${kind === 'haze' ? '2.5' : '1.6'});
+      float flow = t*4. - uTime*9.;
+      float n = snoise(vec3(vUv.x*6.283*.9, flow, uTime*.7))*.5 + snoise(vec3(vUv.x*6.283*2.1, flow*2.3, uTime*1.3))*.25 + .5;
+      float len = pow(max(1.-t, 0.), ${kind === 'core' ? '1.9' : kind === 'haze' ? '1.1' : '1.35'}) * smoothstep(0., .035, t);
+      float a = len * soft * mix(.55, 1.15, n);
+      vec3 c = mix(vec3(.62,.72,1.), vec3(1.,.62,.26), smoothstep(.03,.3,t));
+      c = mix(c, vec3(.95,.25,.08), smoothstep(.3,1.,t));
+      ${kind === 'core' ? 'float dx = t*9.5; float dia = pow(max(0., cos(dx*3.14159)), 10.) * smoothstep(.55,.05,t) * soft; a += dia*.9; c = mix(c, vec3(1.,.9,.8), dia*.6);' : ''}
+      float gain = ${kind === 'core' ? '3.6' : kind === 'haze' ? '.55' : '1.8'};
+      gl_FragColor = vec4(min(c*a*uPower*gain, vec3(24.)), 1.); }`;
+  const mkPlume = (r, h, kind) => {
+    const m = new THREE.Mesh(new THREE.ConeGeometry(r, h, 64, 48, true), new THREE.ShaderMaterial({ uniforms: plumeU, vertexShader: plumeVS, fragmentShader: plumeFS(kind), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.FrontSide }));
     m.rotation.x = Math.PI; m.position.y = -1.05 - h / 2; m.frustumCulled = false; return m;
   };
-  const plume = new THREE.Group(); plume.add(mkPlume(1.15, 18, false), mkPlume(.72, 7.5, true));
+  const plume = new THREE.Group(); plume.add(mkPlume(2.1, 26, 'haze'), mkPlume(1.15, 18, 'body'), mkPlume(.72, 7.5, 'core'));
   plume.visible = false;
   model.add(plume);
   const engLight = new THREE.PointLight(0xff8a3a, 0, 0, 2); engLight.position.y = -3; model.add(engLight);
@@ -1071,8 +1124,41 @@ function makeShip({ blueprint = false } = {}) {
     bellMats.forEach(m => m.emissiveIntensity = Math.max(m.emissiveIntensity, c * .9));
     engLight.intensity = Math.max(engLight.intensity, c * 30);
   };
+  // model hull: fitted to the procedural ship's envelope, scan-built bottom-up behind a glowing weld ring
+  const skin = new THREE.Group(); model.add(skin);
+  const SKIN_H = 12.4, SKIN_BOTTOM = -1.05, clip = new THREE.Plane(new V3(0, -1, 0), 1e6);
+  const weld = new THREE.Mesh(new THREE.TorusGeometry(1.46, .03, 8, 96), new THREE.MeshBasicMaterial({ color: new THREE.Color(3.4, 2.3, 1.2), toneMapped: false }));
+  weld.rotation.x = Math.PI / 2; weld.visible = false; skin.add(weld);
+  let skinReady = false, lastP = 0;
+  const _q = new THREE.Quaternion(), _up = new V3(), _pt = new V3();
+  const applySkin = (P) => {
+    lastP = P; if (!skinReady) return;
+    parts.forEach(g => g.visible = false);
+    if (P >= .999) { clip.normal.set(0, -1, 0); clip.constant = 1e6; weld.visible = false; return; }
+    const y = SKIN_BOTTOM + P * SKIN_H * 1.01;
+    model.updateWorldMatrix(true, false);
+    _up.set(0, 1, 0).applyQuaternion(model.getWorldQuaternion(_q));
+    clip.setFromNormalAndCoplanarPoint(_up.negate(), skin.localToWorld(_pt.set(0, y, 0)));
+    const u = (y - SKIN_BOTTOM) / SKIN_H;   // the nose tapers, so the weld ring shrinks with it
+    weld.position.y = y; weld.scale.setScalar(u > .86 ? Math.max(.05, Math.sqrt((1 - u) / .14)) : 1); weld.visible = P > .002;
+  };
+  shipModel.then(src => {
+    if (!src) return;
+    const s = src.clone(true); s.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(s), size = box.getSize(new V3()), c = box.getCenter(new V3());
+    const k = SKIN_H / size.y;
+    s.position.set(-c.x * k, SKIN_BOTTOM - box.min.y * k, -c.z * k); s.scale.setScalar(k);
+    s.traverse(o => { if (!o.isMesh) return;
+      const m = o.material = o.material.clone(); m.clippingPlanes = [clip]; m.envMapIntensity = .9; o.frustumCulled = false;
+      // keep the steel's gloss variation but never mirror-sharp: on flat hull panels a sharp highlight reads as a lit square
+      m.onBeforeCompile = (sh) => { sh.fragmentShader = sh.fragmentShader.replace('#include <roughnessmap_fragment>', THREE.ShaderChunk.roughnessmap_fragment.replace('roughnessFactor *= texelRoughness.g;', 'roughnessFactor = max(roughnessFactor * texelRoughness.g, .42);')); };
+    });
+    skin.add(s); skinReady = true; applySkin(lastP);
+  });
+  const setAssemblyProc = setAssembly;
+  const setAssemblyAll = (P) => { setAssemblyProc(P); applySkin(P); };
   model.position.y = -5.9;
-  return { model, parts, setAssembly, setPower, setCharge };
+  return { model, parts, setAssembly: setAssemblyAll, setPower, setCharge };
 }
 
 /* forge ship */
@@ -1086,7 +1172,19 @@ let heroShip;
 const yard = new THREE.Group(); yard.position.copy(S); scene.add(yard);
 const navLights = [];
 {
-  const truss = new THREE.MeshStandardMaterial({ color: 0x5d6270, metalness: .75, roughness: .45 });
+  // painted structural steel: grime, vertical run-off streaks and scratches, generated once on a canvas
+  const steelTex = (() => {
+    const W = 512, c = document.createElement('canvas'); c.width = c.height = W; const g = c.getContext('2d');
+    g.fillStyle = '#6b707b'; g.fillRect(0, 0, W, W);
+    for (let i = 0; i < 900; i++) { const x = Math.random() * W, y = Math.random() * W, r = 6 + Math.random() * 40; const gr = g.createRadialGradient(x, y, 0, x, y, r); const d = Math.random() < .6 ? '0,0,0' : '255,255,255'; gr.addColorStop(0, `rgba(${d},${.035 + Math.random() * .05})`); gr.addColorStop(1, `rgba(${d},0)`); g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2); }
+    for (let i = 0; i < 160; i++) { const x = Math.random() * W, y = Math.random() * W, h = 30 + Math.random() * 180; const gr = g.createLinearGradient(0, y, 0, y + h); gr.addColorStop(0, 'rgba(20,16,12,.16)'); gr.addColorStop(1, 'rgba(20,16,12,0)'); g.fillStyle = gr; g.fillRect(x, y, 1 + Math.random() * 3, h); }
+    g.strokeStyle = 'rgba(210,215,225,.18)'; g.lineWidth = .7;
+    for (let i = 0; i < 220; i++) { const x = Math.random() * W, y = Math.random() * W, a = Math.random() * Math.PI, l = 4 + Math.random() * 26; g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); g.stroke(); }
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8; return t;
+  })();
+  const truss = new THREE.MeshStandardMaterial({ color: 0xffffff, map: steelTex, metalness: .72, roughness: .5, envMapIntensity: .8 });
+  const trussDark = new THREE.MeshStandardMaterial({ color: 0x8a8f99, map: steelTex, metalness: .6, roughness: .6 });
+  const hazard = (() => { const c = document.createElement('canvas'); c.width = 128; c.height = 32; const g = c.getContext('2d'); g.fillStyle = '#1a1a1a'; g.fillRect(0, 0, 128, 32); g.fillStyle = '#d9a646'; for (let x = -32; x < 160; x += 32) { g.beginPath(); g.moveTo(x, 32); g.lineTo(x + 16, 32); g.lineTo(x + 32, 0); g.lineTo(x + 16, 0); g.fill(); } const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping; return t; })();
   const beams = [];
   const beam = (a, b, t = .12) => beams.push([new V3(...a), new V3(...b), t]);
   // tower
@@ -1098,34 +1196,75 @@ const navLights = [];
   }
   // one clamp arm at the ship's pivot height, aimed at its axis: once the station turns the tower side-on,
   // this line is the ship's pitch axis, so the clamp point stays put while the ship swings round
-  { const d = Math.hypot(tx, tz), ux = tx / d, uz = tz / d, hull = 1.25;
+  { const d = Math.hypot(tx, tz), ux = tx / d, uz = tz / d, hull = USE_MODEL ? 1.45 : 1.25;
     beam([tx - ux * w * .5, 0, tz - uz * w * .5], [ux * hull, 0, uz * hull], .16);
     beam([tx - ux * w * .5, 1.1, tz - uz * w * .5], [ux * (hull + .5), 0, uz * (hull + .5)], .07);
     beam([tx - ux * w * .5, -1.1, tz - uz * w * .5], [ux * (hull + .5), 0, uz * (hull + .5)], .07); }
   // spine to habitat
   beam([tx, -7, tz], [-40, -12, -18], .3); beam([tx, -5, tz], [-40, -10, -18], .15);
   for (let k = 0; k < 8; k++) { const t = k / 7; beam([lerp(tx, -40, t), lerp(-7, -12, t), lerp(tz, -18, t)], [lerp(tx, -40, t), lerp(-5, -10, t), lerp(tz, -18, t)], .08); }
-  const geo = new THREE.BoxGeometry(1, 1, 1);
+  const geo = new THREE.CylinderGeometry(.5, .5, 1, 10, 1);
   const inst = new THREE.InstancedMesh(geo, truss, beams.length);
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new V3(), mid = new V3(), dir = new V3();
   beams.forEach(([a, b, t], i) => { mid.addVectors(a, b).multiplyScalar(.5); dir.subVectors(b, a); sc.set(t, dir.length(), t); q.setFromUnitVectors(UP, dir.normalize()); m4.compose(mid, q, sc); inst.setMatrixAt(i, m4); });
   yard.add(inst);
+  // gusset plates at every tower joint
+  { const joints = []; for (let y = -9; y <= 13; y += 2) corners.forEach(([x, z]) => joints.push([x, y, z]));
+    const jm = new THREE.InstancedMesh(new THREE.BoxGeometry(.36, .3, .36), trussDark, joints.length);
+    joints.forEach((p, i) => { m4.makeTranslation(...p); jm.setMatrixAt(i, m4); }); yard.add(jm); }
+  // services up the tower: a fat coolant line, two thin feeds, a cable tray, equipment boxes
+  { const face = corners[1];
+    const pipe = (dx, dz, r, mat) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 22, 12), mat); m.position.set(face[0] + dx, 2, face[1] + dz); yard.add(m); };
+    const insul = new THREE.MeshStandardMaterial({ color: 0xb87333, metalness: .55, roughness: .38 });
+    pipe(.22, .1, .09, insul); pipe(.22, .32, .045, truss); pipe(.22, .46, .045, truss);
+    const tray = new THREE.Mesh(new THREE.BoxGeometry(.06, 22, .34), trussDark); tray.position.set(corners[2][0] + .1, 2, corners[2][1] - .5); yard.add(tray);
+    const boxM = new THREE.MeshStandardMaterial({ color: 0xc9ccd2, map: steelTex, metalness: .35, roughness: .55 });
+    for (const [y, s] of [[-6.5, 1], [-1.8, .8], [4.6, 1.1], [9.4, .7]]) { const b = new THREE.Mesh(new THREE.BoxGeometry(.55 * s, .8 * s, .45 * s), boxM); b.position.set(face[0] + .45, y, face[1] + .95); yard.add(b);
+      const lamp = new THREE.Mesh(new THREE.SphereGeometry(.035, 8, 6), new THREE.MeshBasicMaterial({ color: new THREE.Color(.4, 3, 1.2) })); lamp.position.set(face[0] + .45 + .28 * s, y + .25 * s, face[1] + .95); yard.add(lamp); } }
+  // service platform where the clamp arm leaves the tower: grating, railings, a hazard-striped arm collar
+  { const d = Math.hypot(tx, tz), ux = tx / d, uz = tz / d;
+    const deck = new THREE.Mesh(new THREE.BoxGeometry(2.4, .08, 2.4), trussDark); deck.position.set(tx - ux * 1.2, -.55, tz - uz * 1.2); deck.rotation.y = Math.atan2(ux, uz); yard.add(deck);
+    const rail = new THREE.MeshStandardMaterial({ color: 0xd9a646, metalness: .4, roughness: .45 });
+    for (const off of [-1.15, 1.15]) { const r = new THREE.Mesh(new THREE.CylinderGeometry(.025, .025, 2.3, 6), rail); r.rotation.z = Math.PI / 2; r.position.set(0, .45, off); const h = new THREE.Group(); h.add(r); for (const px of [-1.1, 0, 1.1]) { const post = new THREE.Mesh(new THREE.CylinderGeometry(.02, .02, .95, 6), rail); post.position.set(px, 0, off); h.add(post); } h.position.copy(deck.position).add(new V3(0, .5, 0)); h.rotation.y = deck.rotation.y + Math.PI / 2; yard.add(h); }
+    const collarM = new THREE.MeshStandardMaterial({ map: hazard, metalness: .3, roughness: .5 }); hazard.repeat.set(3, 1);
+    const collar = new THREE.Mesh(new THREE.CylinderGeometry(.13, .13, .7, 12, 1, true), collarM);
+    const hull = USE_MODEL ? 1.45 : 1.25; collar.position.set(ux * (hull + .55), 0, uz * (hull + .55)); collar.quaternion.setFromUnitVectors(UP, new V3(ux, 0, uz)); yard.add(collar);
+    const pad = new THREE.Mesh(new THREE.CylinderGeometry(.3, .3, .1, 20), trussDark); pad.position.set(ux * (hull + .05), 0, uz * (hull + .05)); pad.quaternion.setFromUnitVectors(UP, new V3(ux, 0, uz)); yard.add(pad); }
   // assembly hoops; nav lights are a small bulb plus a soft round halo (a bright box blooms into a square)
   const bulbGeo = new THREE.SphereGeometry(.075, 12, 8), bulbMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(1.6, 1.3, .85) });
   const haloMat = new THREE.SpriteMaterial({ map: glowTexture([[0, 'rgba(255,236,200,.9)'], [.25, 'rgba(255,200,130,.35)'], [1, 'rgba(255,170,90,0)']]), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true });
   for (const [y, r] of [[-4.5, 7.5], [2.5, 6.4], [8.5, 5.2]]) {
     const hoop = new THREE.Group(); hoop.position.y = y;
-    const tor = new THREE.Mesh(new THREE.TorusGeometry(r, .16, 10, 160), truss); tor.rotation.x = Math.PI / 2; hoop.add(tor);
+    const band = (rad, h, open) => new THREE.Mesh(new THREE.CylinderGeometry(rad, rad, h, 180, 1, open), truss);
+    const outer = band(r + .17, .24, true), inner = band(r - .17, .24, true); hoop.add(outer, inner);
+    for (const yy of [.12, -.12]) { const plate = new THREE.Mesh(new THREE.RingGeometry(r - .17, r + .17, 180, 1), truss); plate.rotation.x = yy > 0 ? -Math.PI / 2 : Math.PI / 2; plate.position.y = yy; hoop.add(plate); }
+    const track = new THREE.Mesh(new THREE.TorusGeometry(r - .26, .035, 6, 180), trussDark); track.rotation.x = Math.PI / 2; hoop.add(track);
+    const houseGeo = new THREE.BoxGeometry(.2, .08, .2);
     for (let i = 0; i < 18; i++) {
-      const a = i / 18 * Math.PI * 2, L = new THREE.Mesh(bulbGeo, bulbMat), H = new THREE.Sprite(haloMat);
-      L.position.set(Math.cos(a) * r, .16, Math.sin(a) * r); H.position.copy(L.position); H.scale.setScalar(.75); hoop.add(L, H);
+      const a = i / 18 * Math.PI * 2, L = new THREE.Mesh(bulbGeo, bulbMat), H = new THREE.Sprite(haloMat), hs = new THREE.Mesh(houseGeo, trussDark);
+      hs.position.set(Math.cos(a) * r, .16, Math.sin(a) * r); hs.rotation.y = -a;
+      L.position.set(Math.cos(a) * r, .22, Math.sin(a) * r); H.position.copy(L.position); H.scale.setScalar(.75); hoop.add(hs, L, H);
     }
     hoop.userData.spin = (y > 0 ? 1 : -1) * .06; yard.add(hoop); navLights.push({ hoop });
   }
   // platform
-  const plat = new THREE.Mesh(new THREE.CylinderGeometry(7.5, 7.5, .35, 6), truss); plat.position.y = -9.2; yard.add(plat);
-  const platEdge = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.CylinderGeometry(7.55, 7.55, .36, 6)), new THREE.LineBasicMaterial({ color: new THREE.Color(1.8, 1.3, .6) }));
-  platEdge.position.y = -9.2; yard.add(platEdge);
+  // deck: steel plates, bolts, hazard chevrons round the rim, a painted landing ring and bay markings
+  const deckTex = (() => {
+    const W = 1024, c = document.createElement('canvas'); c.width = c.height = W; const g = c.getContext('2d');
+    g.fillStyle = '#3a3e46'; g.fillRect(0, 0, W, W);
+    for (let x = 0; x < W; x += 128) for (let y = 0; y < W; y += 128) { const v = 52 + Math.random() * 14; g.fillStyle = `rgb(${v},${v + 3},${v + 9})`; g.fillRect(x + 2, y + 2, 124, 124);
+      g.fillStyle = 'rgba(0,0,0,.35)'; for (const [bx, by] of [[8, 8], [120, 8], [8, 120], [120, 120]]) { g.beginPath(); g.arc(x + bx, y + by, 2.5, 0, 7); g.fill(); } }
+    for (let i = 0; i < 500; i++) { const x = Math.random() * W, y = Math.random() * W, r = 10 + Math.random() * 50; const gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, `rgba(0,0,0,${.05 + Math.random() * .08})`); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2); }
+    const cx = W / 2; g.strokeStyle = 'rgba(217,166,70,.85)'; g.lineWidth = 10; g.beginPath(); g.arc(cx, cx, 250, 0, 7); g.stroke(); g.lineWidth = 3; g.beginPath(); g.arc(cx, cx, 275, 0, 7); g.stroke();
+    g.save(); g.translate(cx, cx); for (let k = 0; k < 72; k++) { g.rotate(Math.PI * 2 / 72); if (k % 2) { g.fillStyle = '#d9a646'; g.fillRect(-12, -W * .47, 24, 34); } } g.restore();
+    g.fillStyle = 'rgba(232,235,240,.75)'; g.font = '700 54px "Big Shoulders Display", Impact, sans-serif'; g.textAlign = 'center'; g.fillText('BAY 2  ·  APH-1', cx, cx + 360);
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t;
+  })();
+  const deckTop = new THREE.MeshStandardMaterial({ map: deckTex, metalness: .5, roughness: .62 });
+  const plat = new THREE.Mesh(new THREE.CylinderGeometry(7.5, 7.5, .5, 6), [truss, deckTop, trussDark]); plat.position.y = -9.3; yard.add(plat);
+  for (let k = 0; k < 6; k++) { const rib = new THREE.Mesh(new THREE.BoxGeometry(.25, .7, 7.2), trussDark); rib.rotation.y = k * Math.PI / 3; rib.position.y = -9.9; yard.add(rib); }
+  const platEdge = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.CylinderGeometry(7.55, 7.55, .51, 6)), new THREE.LineBasicMaterial({ color: new THREE.Color(1.8, 1.3, .6) }));
+  platEdge.position.y = -9.3; yard.add(platEdge);
   // habitat modules and solar arrays at the end of the spine
   const hab = new THREE.MeshStandardMaterial({ color: 0xd8d6cf, metalness: .3, roughness: .55 });
   for (let k = 0; k < 3; k++) { const m = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.4, 5, 32), hab); m.rotation.z = Math.PI / 2; m.rotation.y = .4; m.position.set(-30 - k * 5.2, -10.8 + k * .1, -14.5 - k * 1.8); yard.add(m); }
@@ -1144,7 +1283,20 @@ const navLights = [];
     const b = new THREE.Mesh(new THREE.SphereGeometry(.16, 12, 8), new THREE.MeshBasicMaterial({ color: new THREE.Color(...c) }));
     b.position.set(...p); yard.add(b); navLights.push({ b, ph: Math.random() * 6 });
   }
-  const key = new THREE.PointLight(0xffc38a, 16, 0, 2); key.position.set(-4.5, 6, 5); yard.add(key);
+  // floodlights on the tower and deck, aimed at the ship, each with a faint visible beam
+  const beamMat = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+    vertexShader: `varying vec2 vUv; varying vec3 vN; varying vec3 vV; void main(){ vUv = uv; vN = normalize(normalMatrix*normal); vec4 mv = modelViewMatrix*vec4(position,1.); vV = -mv.xyz; gl_Position = projectionMatrix*mv; }`,
+    fragmentShader: `varying vec2 vUv; varying vec3 vN; varying vec3 vV; void main(){ float f = pow(abs(dot(normalize(vN), normalize(vV))), 2.); float a = pow(vUv.y, 1.6) * f * .09; gl_FragColor = vec4(vec3(1.,.86,.66)*a, 1.); }` });
+  const lensM = new THREE.MeshBasicMaterial({ color: new THREE.Color(3, 2.6, 2) });
+  for (const [pos, aim] of [[[tx + 1, 11.2, tz + .9], [0, 5, 0]], [[5.8, -8.6, 3.4], [0, -2, 0]], [[-4.2, -8.6, 5.6], [0, 1, 0]]]) {
+    const from = new V3(...pos), to = new V3(...aim), dir = to.clone().sub(from), len = dir.length();
+    const sp = new THREE.SpotLight(0xffe2bf, 380, 40, .34, .65, 2); sp.position.copy(from); sp.target.position.copy(to); yard.add(sp, sp.target);
+    const head = new THREE.Group(); head.position.copy(from); head.quaternion.setFromUnitVectors(new V3(0, -1, 0), dir.clone().normalize()); yard.add(head);
+    const can = new THREE.Mesh(new THREE.CylinderGeometry(.24, .3, .45, 16), trussDark); head.add(can);
+    const lens = new THREE.Mesh(new THREE.CircleGeometry(.23, 20), lensM); lens.rotation.x = Math.PI / 2; lens.position.y = -.231; head.add(lens);
+    const cone = new THREE.Mesh(new THREE.CylinderGeometry(.24, len * Math.tan(.34), len, 32, 1, true), beamMat); cone.position.y = -len / 2 - .2; head.add(cone);
+  }
+  const key = new THREE.PointLight(0xffc38a, 8, 0, 2); key.position.set(-4.5, 6, 5); yard.add(key);
   const rim = new THREE.PointLight(0x7fb0ff, 70, 0, 2); rim.position.set(5, 11, -6); yard.add(rim);
   const low = new THREE.PointLight(0xffa060, 22, 0, 2); low.position.set(3, -7, 3); yard.add(low);
 }
@@ -1823,7 +1975,8 @@ function tick() {
     navLights[1].hoop.position.y = 2.5 + 3.8 * smooth(0, 1, dp / dockF0());
     shipPivot.position.copy(st.pos); shipPivot.quaternion.copy(st.quat);
     ship.setPower(i === 4 ? st.power : 0, t);
-    if (i === 4 && charge < 1) ship.setCharge(charge);
+    // pre-ignition glow only once the ship has swung to its departure attitude (T-6 onward)
+    if (i === 4 && charge < 1) ship.setCharge(smooth(.108, .27, sp));
     shipPivot.visible = !(i >= 6);
   }
   const warpAmt = (i === 4 && st) ? st.warp : 0;
@@ -1860,7 +2013,8 @@ function tick() {
 
   /* solar system motion */
   const sysSpeed = i === 6 ? .25 : 1;
-  PLANETS.forEach(P => { P.ang += P.w * dt * sysSpeed; P.holder.position.set(Math.cos(P.ang) * P.d, 0, Math.sin(P.ang) * P.d); P.mesh.rotation.y += dt * .08; });
+  PLANETS.forEach(P => { if (P.ringMat) P.mesh.getWorldPosition(P.ringMat.uniforms.uCenter.value);
+    P.ang += P.w * dt * sysSpeed; P.holder.position.set(Math.cos(P.ang) * P.d, 0, Math.sin(P.ang) * P.d); P.mesh.rotation.y += dt * .08; });
   belt.rotation.y += dt * .004;
   if (i === 6) showPlanet(Math.min(7, Math.floor(sp * 8)));
 
@@ -1882,7 +2036,7 @@ function tick() {
   camera.setViewOffset(innerWidth, innerHeight, -camOff * innerWidth, 0, innerWidth, innerHeight);
   camera.updateProjectionMatrix();
   sky.position.copy(camera.position);
-  finalPass.uniforms.uCA.value = .0025 + warpAmt * .012;
+  finalPass.uniforms.uCA.value = .0007 + warpAmt * .005;
 
   // chapter 04 copy fades out shortly before the pinned view starts scrolling away
   sysEl.classList.toggle('leaving', sy > tops[5] + heights[5] - vh * 1.12);
