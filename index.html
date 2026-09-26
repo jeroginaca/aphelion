@@ -159,9 +159,18 @@ main a,main button,main input,main label,main form{pointer-events:auto}
 .btn.ghost:focus-visible::after,.pill:not(.solid):focus-visible::after{background:var(--foil2)}
 @keyframes orb{to{--orb:360deg}}
 /* HUD plate: frosted, chamfered backing so data stays legible over bright 3D */
-.plate{position:relative;clip-path:var(--shape);background:linear-gradient(100deg,rgba(6,9,18,.72),rgba(6,9,18,.5));backdrop-filter:blur(14px) saturate(120%);-webkit-backdrop-filter:blur(14px) saturate(120%);padding:4px 26px 8px}
-.plate::after{content:"";position:absolute;inset:0;clip-path:var(--ring);pointer-events:none;background:linear-gradient(180deg,rgba(232,235,240,.26),rgba(232,235,240,.08))}
-.plate.sgrid,.plate.readouts,.plate.mlist{border-top:0}
+.plate{position:relative;clip-path:var(--shape);
+  background:repeating-linear-gradient(0deg,rgba(232,235,240,.022) 0 1px,transparent 1px 3px),
+             radial-gradient(120% 80% at 0% 0%,rgba(156,194,255,.06),transparent 60%),
+             linear-gradient(100deg,rgba(8,12,24,.5),rgba(8,12,24,.28));
+  backdrop-filter:blur(18px) saturate(140%);-webkit-backdrop-filter:blur(18px) saturate(140%)}
+/* .plate.x beats each block's own padding:0 */
+.plate.sgrid,.plate.readouts,.plate.mlist{border-top:0;padding:8px 32px 12px}
+.plate::after{content:"";position:absolute;inset:0;clip-path:var(--ring);pointer-events:none;background:linear-gradient(180deg,rgba(232,235,240,.3),rgba(232,235,240,.08))}
+/* gold corner ticks on the two square corners */
+.plate::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.85;
+  background:linear-gradient(var(--foil),var(--foil)) left top/16px 1px no-repeat,linear-gradient(var(--foil),var(--foil)) left top/1px 16px no-repeat,
+             linear-gradient(var(--foil),var(--foil)) right bottom/16px 1px no-repeat,linear-gradient(var(--foil),var(--foil)) right bottom/1px 16px no-repeat}
 .plate>:last-child{border-bottom:0}
 /* rolling label */
 .bl{position:relative;display:block;overflow:hidden;line-height:1.25;padding-top:.08em}
@@ -330,7 +339,7 @@ html .sys.leaving>*,html.js .sys.leaving>.rv.in{opacity:0}
 #s-cta{min-height:calc(100vh - 66px);display:flex;flex-direction:column;justify-content:flex-start;align-items:center;text-align:center;padding-block:clamp(84px,9.5vh,112px) 5vh}
 #s-cta .eyebrow{margin-bottom:14px}
 .cta-foot{margin-top:auto;padding-top:4vh;width:100%}
-.cta-t{font:900 clamp(3.6rem,11vw,11.5rem)/.82 var(--fd);text-transform:uppercase;margin:0 0 28px;letter-spacing:-.01em}
+.cta-t{font:900 clamp(3.6rem,11vw,11.5rem)/.94 var(--fd);text-transform:uppercase;margin:0 0 28px;letter-spacing:-.01em}
 .form{display:flex;gap:8px;margin:36px auto 0;max-width:520px;width:100%;background:rgba(10,15,28,.6);padding:6px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
 .form input{flex:1;min-width:0;background:transparent;border:0;color:var(--bone);font:400 15px/1 var(--fb);padding:0 18px;outline:none}
 .form input::placeholder{color:var(--dim)}
@@ -387,6 +396,7 @@ footer a:hover{color:var(--bone)}
   .btn.ghost{padding:0 22px}
   .btn:not(.ghost){padding-left:22px}
   .form{flex-direction:column;padding:6px}
+  .plate.sgrid,.plate.readouts,.plate.mlist{padding:6px 18px 10px}
   .form input{height:48px}
   .form .btn{justify-content:space-between;padding-left:22px}
   .pass{grid-template-columns:1fr}
@@ -433,7 +443,7 @@ footer a:hover{color:var(--bone)}
   <section id="s-hero" class="chap" data-side="left" data-sector="Low Earth Orbit" data-label="Orbit" data-track="Earth · Sol III">
     <div class="hero-inner">
       <p class="eyebrow hero-fade">Aphelion Interplanetary Agency · Est. 2019</p>
-      <h1 class="hero-title"><span class="ln"><span>Built in orbit.</span></span><span class="ln"><span>Bound for</span></span><span class="ln"><span class="foil">everywhere.</span></span></h1>
+      <h1 class="hero-title"><span class="ln"><span>Built in orbit</span></span><span class="ln"><span>Bound for</span></span><span class="ln"><span class="foil">everywhere</span></span></h1>
       <p class="lede hero-fade">We design, weld and fly reusable starships from a shipyard 408&nbsp;km above the Pacific — and we're taking them to every world that circles the Sun.</p>
       <div class="hero-cta hero-fade">
         <a class="btn" href="#s-forge"><span class="bl" data-t="Tour the shipyard"><span>Tour the shipyard</span></span><i class="ba" aria-hidden="true"><svg viewBox="0 0 12 12"><path d="M1.5 3h9L6 10z" fill="currentColor"/></svg><svg viewBox="0 0 12 12"><path d="M1.5 3h9L6 10z" fill="currentColor"/></svg></i></a>
@@ -558,7 +568,7 @@ footer a:hover{color:var(--bone)}
 
   <section id="s-cta" class="chap" data-side="center" data-sector="Open Channel" data-label="Join" data-track="Sol">
     <p class="eyebrow rv" style="justify-content:center">Now boarding</p>
-    <h2 class="cta-t rv">The solar system<br><span class="foil">is hiring.</span></h2>
+    <h2 class="cta-t rv">The solar system<br><span class="foil">is hiring</span></h2>
     <div class="cta-foot">
     <p class="lede rv" style="margin-inline:auto">Welders, flight surgeons, orbital mechanics, hydroponic farmers, poets. Put your name on the next manifest.</p>
     <form class="form rv" id="form" novalidate>
