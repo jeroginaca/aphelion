@@ -49,15 +49,110 @@ body[data-side="center"] #scrim::before,body[data-side="center"] #scrim::after{o
 @keyframes grain{0%{transform:translate(0,0)}20%{transform:translate(-3%,2%)}40%{transform:translate(2%,-4%)}60%{transform:translate(-4%,-1%)}80%{transform:translate(3%,3%)}100%{transform:translate(0,0)}}
 
 /* ---------- loader ---------- */
-#loader{position:fixed;inset:0;z-index:50;background:var(--ink);display:grid;place-items:center;transition:transform 1.1s cubic-bezier(.77,0,.18,1),visibility 0s 1.2s}
-html.loaded #loader{transform:translateY(-100%);visibility:hidden}
-.ld{width:min(560px,86vw);display:grid;gap:18px}
-.ld-top{display:flex;justify-content:space-between;align-items:flex-end;font:500 11px/1 var(--fm);letter-spacing:.18em;text-transform:uppercase;color:var(--mute)}
-.ld-num{font:800 clamp(5rem,18vw,10rem)/.8 var(--fd);letter-spacing:-.01em;font-variant-numeric:tabular-nums;color:var(--bone)}
-.ld-num small{font-size:.35em;color:var(--foil);margin-left:.1em}
-.ld-bar{height:1px;background:var(--line);position:relative;overflow:hidden}
-.ld-bar i{position:absolute;inset:0;background:var(--foil);transform-origin:left;transform:scaleX(0);transition:transform .25s linear}
-#ldmsg{font:400 12px/1.4 var(--fm);color:var(--mute);letter-spacing:.06em;min-height:1.4em}
+/* a flight-dynamics console: the solar system draws itself as assets land, then the orbits collapse into the Sun,
+   a foil seam flashes across the horizon and the screen parts like hangar doors onto the scene */
+#loader{position:fixed;inset:0;z-index:50;color:var(--bone);font:500 11px/1.5 var(--fm);letter-spacing:.16em;text-transform:uppercase;visibility:visible;transition:visibility 0s 1.25s}
+#loader::before,#loader::after{content:"";position:absolute;left:0;right:0;height:calc(50% + 1px);background:var(--ink);transition:transform 1.15s cubic-bezier(.77,0,.18,1)}
+#loader::before{top:0;background:radial-gradient(120% 100% at 50% 100%,#0b1122,var(--ink) 70%)}
+#loader::after{bottom:0;background:radial-gradient(120% 100% at 50% 0%,#0b1122,var(--ink) 70%)}
+html.loaded #loader{visibility:hidden}
+html.loaded #loader::before{transform:translateY(-101%)}
+html.loaded #loader::after{transform:translateY(101%)}
+.ld{position:absolute;inset:0;z-index:1;padding:calc(22px + env(safe-area-inset-top,0px)) var(--gut) calc(22px + env(safe-area-inset-bottom,0px));display:grid;grid-template-rows:auto 1fr auto;transition:opacity .4s .3s ease}
+html.ld-go .ld,html.loaded .ld{opacity:0}
+/* the system is plain boxes animated with transform/opacity only, so it keeps moving on the compositor
+   while shader compiles and texture uploads block the main thread; 1u = 1/640 of its width */
+.ld-sys{--u:calc(100cqw/640);place-self:center;position:relative;width:min(760px,92vw);aspect-ratio:640/260;container-type:inline-size;transition:transform .7s cubic-bezier(.7,0,.2,1)}
+html.ld-go .ld-sys,html.loaded .ld-sys{transform:scale(.05) rotate(-40deg)}
+.ld-plane{position:absolute;left:50%;top:50%;width:0;height:0;transform:rotate(-14deg)}
+.ld-plane.flat{transform:rotate(-14deg) scaleY(.34)}
+.ld-axis{position:absolute;left:calc(var(--u)*-310);top:0;width:calc(var(--u)*620);height:1px;background:linear-gradient(90deg,transparent,var(--line) 12%,var(--line) 88%,transparent)}
+/* each orbit draws itself as one clockwise stroke: two half-windows each hold a half-ring that turns 180° into view,
+   the second picking up where the first ends. The ring itself counter-turns so it stays still while its window sweeps,
+   which keeps it transform-only (the pen never stutters) and lets a fixed conic mask fade the trail in from the pen's
+   start. Each orbit starts at its own angle (--a), and once closed it hands over to a plain solid ring.
+   Rings live in the squashed plane, so top/bottom borders are drawn 1/.34 thicker to come out even. */
+.ld-ring{position:absolute;left:calc(var(--r)*var(--u)*-1);top:calc(var(--r)*var(--u)*-1);width:calc(var(--r)*var(--u)*2);height:calc(var(--r)*var(--u)*2);transform:rotate(var(--a))}
+.ld-ring .h{position:absolute;top:0;width:50%;height:100%;overflow:hidden;animation:ldout .7s ease both;animation-delay:var(--done)}
+.ld-ring .h.r{left:50%}
+.ld-ring .h.l{left:0}
+.ld-ring .sp{position:absolute;top:0;width:200%;height:100%;animation:ldhalf calc(var(--D)/2) linear both}
+.ld-ring .h.r .sp{left:-100%}
+.ld-ring .h.l .sp{left:0}
+.ld-ring .c{position:absolute;top:0;width:50%;height:100%;overflow:hidden}
+.ld-ring .h.r .c{left:0}
+.ld-ring .h.l .c{left:50%}
+.ld-ring b,.ld-ring .full{position:absolute;top:0;width:200%;height:100%;box-sizing:border-box;border-radius:50%;border:solid var(--line2);border-width:2.94px 1px;rotate:calc(var(--a)*-1)}
+.ld-ring b{animation:ldunhalf calc(var(--D)/2) linear both;
+  -webkit-mask:conic-gradient(from var(--a),transparent,rgba(0,0,0,.2) 50deg,#000 330deg);mask:conic-gradient(from var(--a),transparent,rgba(0,0,0,.2) 50deg,#000 330deg)}
+.ld-ring .h.r b{left:0}
+.ld-ring .h.l b{left:-100%}
+.ld-ring .h.r .sp,.ld-ring .h.r b{animation-delay:var(--dl)}
+.ld-ring .h.l .sp,.ld-ring .h.l b{animation-delay:calc(var(--dl) + var(--D)/2)}
+.ld-ring .full{left:0;width:100%;opacity:0;animation:ldin .7s ease both;animation-delay:var(--done)}
+@keyframes ldhalf{from{transform:rotate(0)}to{transform:rotate(180deg)}}
+@keyframes ldunhalf{from{transform:rotate(0)}to{transform:rotate(-180deg)}}
+@keyframes ldin{to{opacity:1}}
+@keyframes ldout{to{opacity:0}}
+.ld-arm{position:absolute;left:0;top:0;animation:ldspin var(--t) linear infinite;animation-delay:var(--d)}
+/* a world appears the moment its orbit closes */
+.ld-arm i{position:absolute;left:calc(var(--r)*var(--u));top:0;width:var(--s);height:var(--s);margin:calc(var(--s)/-2);border-radius:50%;background:var(--bone);animation:ldcounter var(--t) linear infinite,ldpop .6s cubic-bezier(.34,1.56,.64,1) both;animation-delay:var(--d),var(--done)}
+@keyframes ldpop{from{opacity:0;scale:0}to{opacity:1;scale:1}}
+@keyframes ldspin{to{transform:rotate(360deg)}}
+/* undoes the arm's turn and the plane's squash, so each world stays round as it travels the ellipse */
+@keyframes ldcounter{from{transform:rotate(0) scaleY(2.94)}to{transform:rotate(-360deg) scaleY(2.94)}}
+.ld-sun{position:absolute;left:0;top:0;width:18px;height:18px;margin:-9px;border-radius:50%;background:var(--foil2);box-shadow:0 0 10px rgba(243,207,122,.9),0 0 34px rgba(217,166,70,.55);animation:ldsun 2.4s ease-in-out infinite}
+@keyframes ldsun{50%{transform:scale(1.18)}}
+/* the system owns the screen; a small foil readout sits under it */
+.ld-mid{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:clamp(20px,4vh,40px);pointer-events:none}
+.ld-mid .ld-sys{place-self:auto}
+.ld-cap{margin:0;display:flex;gap:14px;align-items:baseline;font:500 12px/1.4 var(--fm);letter-spacing:.18em;text-transform:uppercase;color:var(--foil2)}
+/* sound prompt: mirrors the readout above the system; a real button that switches the site's sound on */
+.ld-snd{pointer-events:auto;display:inline-flex;align-items:center;margin:0;padding:8px 14px;background:none;border:0;cursor:pointer;font:500 12px/1.4 var(--fm);letter-spacing:.18em;text-transform:uppercase;color:var(--mute);transition:color .3s}
+.ld-snd:hover,.ld-snd:focus-visible{color:var(--bone)}
+.ld-snd:focus-visible{outline:1px solid var(--line2);outline-offset:2px}
+.ld-snd.on{color:var(--foil2)}
+.ld-cap b{font-weight:600;font-variant-numeric:tabular-nums;margin-right:-.18em}  /* cancels the trailing letter-spacing so it sits dead centre */
+/* the exit: two foil lines race in from the screen edges, accelerating; where they collide a flash of light blooms
+   and dies out with a shockwave ring, and in that instant the doors part, each carrying half the seam on its edge.
+   Door halves share their door's box (half the screen + the 1px overlap, moves 101%), the line inset that 1px so both
+   start on the true centre line. All transform/opacity, so it plays through main-thread stalls.
+   timeline: html.ld-go lands when the count reads 90% and launches the lines while the system folds into the Sun;
+   .75s later html.loaded marks the impact: flash, shockwave, doors open, and 1.15s after that the loader is gone */
+.ld-seam{position:absolute;inset:0;z-index:2;pointer-events:none}
+.ld-seam::before,.ld-seam::after{content:"";position:absolute;left:0;right:0;height:calc(50% + 1px);opacity:0;
+  background:linear-gradient(90deg,transparent,var(--foil2) 20%,#fff 50%,var(--foil2) 80%,transparent) no-repeat,linear-gradient(var(--glow-dir),rgba(243,207,122,.28),transparent 18px) no-repeat}
+.ld-seam::before{top:0;--glow-dir:0deg;background-size:100% 1px,100% 18px;background-position:left 0 bottom 1px,left 0 bottom 1px}
+.ld-seam::after{bottom:0;--glow-dir:180deg;background-size:100% 1px,100% 18px;background-position:left 0 top 1px,left 0 top 1px}
+html.loaded .ld-seam::before{animation:ldseamUp 1.15s cubic-bezier(.77,0,.18,1) forwards}
+html.loaded .ld-seam::after{animation:ldseamDn 1.15s cubic-bezier(.77,0,.18,1) forwards}
+@keyframes ldseamUp{from{opacity:1}to{opacity:0;transform:translateY(-101%)}}
+@keyframes ldseamDn{from{opacity:1}to{opacity:0;transform:translateY(101%)}}
+/* the incoming lines: each owns half the width and grows from its outer edge to the centre, brightest at the tip */
+.ld-join{position:absolute;left:0;right:0;top:50%;height:1px;margin-top:-.5px;z-index:2;pointer-events:none}
+.ld-join::before,.ld-join::after{content:"";position:absolute;top:0;width:50%;height:1px;transform:scaleX(0);box-shadow:0 0 12px 1px rgba(243,207,122,.55)}
+.ld-join::before{left:0;transform-origin:left;background:linear-gradient(90deg,transparent,var(--foil2) 55%,#fff)}
+.ld-join::after{right:0;transform-origin:right;background:linear-gradient(270deg,transparent,var(--foil2) 55%,#fff)}
+html.ld-go .ld-join::before,html.ld-go .ld-join::after{animation:ldjoin .75s cubic-bezier(.5,0,.75,0) forwards}
+/* the joined line holds until impact, however late a busy main thread gets there, then hands over to the door edges */
+html.loaded .ld-join{opacity:0}
+@keyframes ldjoin{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+/* the flash: a hot core that blooms out and burns off, trailed by a thin shockwave ring */
+.ld-burst{position:absolute;left:50%;top:50%;width:60vmax;height:60vmax;margin:-30vmax;z-index:3;pointer-events:none;border-radius:50%;opacity:0;transform:scale(0);
+  background:radial-gradient(circle,#fff 0,rgba(255,244,214,.95) 3%,rgba(243,207,122,.6) 10%,rgba(217,166,70,.2) 28%,rgba(217,166,70,.05) 48%,transparent 68%)}
+.ld-wave{position:absolute;left:50%;top:50%;width:80vmax;height:80vmax;margin:-40vmax;z-index:3;pointer-events:none;border-radius:50%;border:1px solid rgba(243,207,122,.8);box-shadow:0 0 24px rgba(243,207,122,.35),inset 0 0 24px rgba(243,207,122,.2);transform:scale(.3);opacity:0}
+html.loaded .ld-burst{animation:ldburst 1.1s cubic-bezier(.16,1,.3,1) forwards}
+html.loaded .ld-wave{animation:ldwave 1.3s cubic-bezier(.16,1,.3,1) forwards}
+@keyframes ldburst{0%{transform:scale(0);opacity:1}12%{opacity:1}100%{transform:scale(1.6);opacity:0}}
+@keyframes ldwave{0%{transform:scale(.01);opacity:1}100%{transform:scale(1.4);opacity:0}}
+@media (prefers-reduced-motion:reduce){
+  .ld-sys{transition:none}
+  .ld-sun,.ld-arm,.ld-arm i,.ld-ring .h,.ld-ring .full{animation:none}
+  .ld-ring .h{display:none}
+  .ld-ring .full{opacity:1}
+  #loader::before,#loader::after{transition-duration:.01s}
+  html.loaded .ld-seam::before,html.loaded .ld-seam::after,html.ld-go .ld-join::before,html.ld-go .ld-join::after,html.loaded .ld-burst,html.loaded .ld-wave{animation:none}
+}
 
 /* ---------- chrome ---------- */
 .nav{position:fixed;top:0;left:0;right:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:calc(18px + env(safe-area-inset-top,0px)) var(--gut) 18px;pointer-events:none}
@@ -78,22 +173,32 @@ html.loaded #loader{transform:translateY(-100%);visibility:hidden}
 .hud b{color:var(--bone);font-weight:500}
 .hud .k{color:var(--foil)}
 
-.rail{position:fixed;right:var(--gut);top:50%;transform:translateY(-50%);z-index:20;display:flex;flex-direction:column;align-items:flex-end;gap:4px}
-.rail button{all:unset;cursor:pointer;display:block;padding:7px 0;white-space:nowrap;font:500 10.5px/1 var(--fm);letter-spacing:.22em;text-transform:uppercase;color:var(--mute);opacity:0;transform:translateX(14px);transition:opacity .6s,transform 1s cubic-bezier(.2,.8,.2,1),color .45s;transition-delay:calc(var(--k) * 70ms),calc(var(--k) * 70ms),0s}
-.rail:not(.show){pointer-events:none}
-.rail:not(.show) button{transition-delay:0s}
-.rail.show button{opacity:1;transform:none}
-.rail b{font-weight:500}
-.rail button:hover,.rail button.on{color:var(--bone)}
-/* collapsed to ticks so it never sits on the 3D; only the active chapter keeps its label, the rest open on hover/focus */
-.rail button{display:flex;align-items:center;gap:12px}
-.rail button::after{content:"";width:12px;height:1px;background:currentColor;opacity:.7;transition:width .5s cubic-bezier(.2,.8,.2,1),background-color .45s}
-.rail button.on::after{width:26px;background:var(--foil);opacity:1}
-.rail b{display:inline-block;transition:opacity .45s,transform .6s cubic-bezier(.2,.8,.2,1)}
-.rail:not(:hover):not(:focus-within) button:not(.on) b{opacity:0;transform:translateX(8px)}
-.rail:hover,.rail:focus-within{background:linear-gradient(270deg,rgba(4,6,12,.72),rgba(4,6,12,0));padding-left:48px;margin-left:-48px}
-.rail button:focus-visible{outline:1px solid var(--foil);outline-offset:4px}
-@media (prefers-reduced-motion:reduce){.rail button{transform:none;transition-delay:0s}}
+/* chapter rail: a HUD plate centred in the navbar, always on. At rest it just reads "Chapters"; hovering or tabbing
+   into it swaps that label for the chapter names, widening the plate from the centre (the current one in gold) */
+.rail{position:absolute;left:50%;top:calc(50% + env(safe-area-inset-top,0px)/2);transform:translate(-50%,-50%);z-index:1;display:flex;align-items:center;white-space:nowrap;font:500 10.5px/1 var(--fm);letter-spacing:.22em;text-transform:uppercase}
+.rail[hidden]{display:none}
+.rail.plate{position:absolute;--c:9px;padding:0 18px;height:40px;transition:padding .6s cubic-bezier(.2,.8,.2,1)}
+.rail-lbl{display:block;max-width:12em;overflow:hidden;color:var(--mute);transition:max-width .6s cubic-bezier(.2,.8,.2,1),opacity .45s .12s}
+.rail button{all:unset;cursor:pointer;display:flex;align-items:center;height:40px;padding:0;white-space:nowrap;font:inherit;color:var(--mute);transition:color .45s,padding .6s cubic-bezier(.2,.8,.2,1)}
+.rail button:hover{color:var(--bone)}
+.rail button.on{color:var(--foil2)}
+.rail b{font-weight:500;display:inline-block;max-width:0;overflow:hidden;opacity:0;transition:max-width .6s cubic-bezier(.2,.8,.2,1),opacity .35s}
+.rail:is(:hover,:focus-within) .rail-lbl{max-width:0;opacity:0;transition:max-width .6s cubic-bezier(.2,.8,.2,1),opacity .25s}
+.rail:is(:hover,:focus-within).plate{padding:0 14px}
+.rail:is(:hover,:focus-within) button{padding:0 10px}
+.rail:is(:hover,:focus-within) b{max-width:12em;opacity:1;transition:max-width .6s cubic-bezier(.2,.8,.2,1),opacity .45s .12s}
+.rail button:focus-visible{outline:1px solid var(--foil);outline-offset:-8px}
+/* narrower desktops: tighter tracking and the sound pill down to its waveform, so the opened rail still clears
+   the logo and the pills (the full-size rail and pills only fit side by side from ~1330px) */
+@media (max-width:1360px){
+  .rail{letter-spacing:.08em}
+  .rail:is(:hover,:focus-within).plate{padding:0 10px}
+  .rail:is(:hover,:focus-within) button{padding:0 6px}
+  .nav:has(.rail:not([hidden])) .sndtxt{display:none}
+  .nav:has(.rail:not([hidden])) .snd{padding-right:12px}
+}
+/* below laptop width the rail would crowd the pills, and it opens on hover, which touch tablets don't have */
+@media (max-width:1023px){.rail{display:none}}
 
 /* ---------- cursor ---------- */
 #cur,#cur2{position:fixed;left:0;top:0;z-index:60;pointer-events:none;border-radius:50%;transform:translate(-100px,-100px)}
@@ -108,7 +213,6 @@ main a,main button,main input,main label,main form{pointer-events:auto}
 .chap{position:relative;padding-inline:var(--gut)}
 .sticky{position:sticky;top:0;height:100vh;height:100svh;display:flex;align-items:center}
 .eyebrow{font:500 11px/1.4 var(--fm);letter-spacing:.2em;text-transform:uppercase;color:var(--foil);margin:0 0 22px;display:flex;gap:12px;align-items:center}
-.eyebrow::before{content:"";width:28px;height:1px;background:currentColor}
 .h2{font:800 clamp(2.6rem,5.6vw,6rem)/.88 var(--fd);text-transform:uppercase;letter-spacing:-.005em;margin:0 0 24px;text-wrap:balance}
 .lede{font-size:clamp(1rem,1.2vw,1.18rem);color:#c3cad6;max-width:34em;margin:0;text-wrap:pretty}
 .foil{color:var(--foil2);background:linear-gradient(100deg,#a8792b 0%,#f5d68c 30%,#d9a646 55%,#fff0c2 72%,#b88636 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;background-size:220% 100%;animation:foil 7s ease-in-out infinite}
@@ -193,6 +297,8 @@ html.js .rv.in{opacity:1;transform:none}
 
 /* hero */
 #s-hero{min-height:100vh;min-height:100svh;display:flex;align-items:flex-end;padding-block:120px clamp(36px,6vh,110px);padding-block-end:calc(clamp(36px,6svh,110px) + env(safe-area-inset-bottom,0px))}
+/* desktop centres the headline block; tablets and phones keep it anchored to the bottom */
+@media (min-width:1201px),(min-width:901px) and (orientation:landscape){#s-hero{align-items:center;padding-block-end:120px}}
 .hero-inner{max-width:min(760px,100%)}
 .hero-title{font:900 clamp(3.4rem,calc(6.8vw + 2rem),9.6rem)/.88 var(--fd);text-transform:uppercase;margin:0 0 16px;letter-spacing:-.008em}
 .hero-title .ln{display:block;overflow:hidden}
@@ -204,8 +310,11 @@ html.js:not(.ready) .hero-fade{opacity:0;transform:translateY(20px)}
 .hero-cta{display:flex;flex-wrap:wrap;gap:12px;margin-top:32px}
 
 /* manifesto */
-#s-manifesto{min-height:170vh;display:flex;flex-direction:column;justify-content:center;padding-block:22vh 18vh;gap:12vh}
-.mani{font:700 clamp(2rem,4.5vw,4.6rem)/1.02 var(--fd);text-transform:uppercase;max-width:15em;margin:0 auto;text-align:center;text-wrap:balance;letter-spacing:.002em}
+/* the copy rides a screen-tall sticky frame: it scrolls in, locks dead centre while the words light, and lets go
+   once the section's extra 70vh has passed (the section keeps its 170vh so the camera's pacing is unchanged) */
+#s-manifesto{min-height:170vh;padding-block:0}
+.mani-pin{position:sticky;top:0;height:100vh;height:100svh;display:grid;place-items:center}
+.mani{font:700 clamp(2rem,4.5vw,4.6rem)/1.02 var(--fd);text-transform:uppercase;max-width:13em;margin:0 auto;text-align:center;text-wrap:balance;letter-spacing:.002em}
 .mani .w{color:rgba(232,235,240,.16);transition:color .5s}
 .mani .w.lit{color:var(--bone)}
 .mani .w.lit.gold{color:var(--foil2)}
@@ -233,6 +342,7 @@ html.js:not(.ready) .hero-fade{opacity:0;transform:translateY(20px)}
 .steps li.cur .d{max-height:6em;opacity:1;margin-top:6px;color:#c3cad6}
 .steps li.cur .no{color:var(--foil)}
 .meter{margin-top:26px;display:flex;align-items:center;gap:16px;font:500 11px/1 var(--fm);letter-spacing:.16em;text-transform:uppercase;color:var(--mute)}
+.meter[hidden]{display:none}
 .meter .trk{flex:1;height:2px;background:var(--line);position:relative}
 .meter .trk i{position:absolute;left:0;top:0;bottom:0;background:var(--foil);width:0}
 .meter b{color:var(--bone);font-weight:500;min-width:4ch;text-align:right;font-variant-numeric:tabular-nums}
@@ -244,11 +354,19 @@ html.js:not(.ready) .hero-fade{opacity:0;transform:translateY(20px)}
 .shipcls{font:500 12px/1.4 var(--fm);letter-spacing:.2em;text-transform:uppercase;color:var(--mute);margin:0 0 36px}
 .sgrid{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--line)}
 .sgrid div{padding:18px 0 16px;border-bottom:1px solid var(--line)}
+.sgrid div:nth-last-child(-n+2){border-bottom:0}  /* the plate's edge closes the last row */
 .sgrid div:nth-child(odd){padding-right:18px;border-right:1px solid var(--line)}
 .sgrid div:nth-child(even){padding-left:22px}
 .sgrid dt{font:400 10.5px/1.4 var(--fm);letter-spacing:.16em;text-transform:uppercase;color:var(--mute);margin-bottom:6px}
 .sgrid dd{margin:0;font:700 clamp(1.8rem,2.6vw,2.5rem)/1 var(--fd);font-variant-numeric:tabular-nums}
 .sgrid dd small{font:500 .42em/1 var(--fm);letter-spacing:.1em;color:var(--mute);margin-left:6px;text-transform:uppercase}
+/* a planet's headline figure: foil value and label, a soft glow that fades out inside the cell, and a note on why it stands out */
+.sgrid .hl{position:relative;isolation:isolate}
+.sgrid .hl::before{content:"";position:absolute;z-index:-1;inset:-6px -10px -6px -28px;pointer-events:none;background:radial-gradient(closest-side,rgba(243,207,122,.075),rgba(243,207,122,.025) 60%,transparent)}
+.sgrid .hl dt{color:var(--foil)}
+.sgrid .hl dd{color:var(--foil2);text-shadow:0 0 22px rgba(243,207,122,.35)}
+.sgrid .hl dd small{color:var(--foil)}
+.sgrid .why{margin:8px 0 0;text-wrap:balance;font:500 10px/1.4 var(--fm);letter-spacing:.14em;text-transform:uppercase;color:var(--foil);opacity:.85}
 
 /* launch */
 #s-launch{height:820vh}
@@ -266,6 +384,17 @@ html.js:not(.ready) .hero-fade{opacity:0;transform:translateY(20px)}
 .chg b{color:var(--bone);font-weight:500;min-width:4ch;text-align:right;font-variant-numeric:tabular-nums}
 .launch .cwrap,.launch .readouts{transition:opacity .8s,transform 1s cubic-bezier(.2,.8,.2,1)}
 .launch.flying .cwrap,.launch.flying .readouts{opacity:0;transform:translateY(-16px)}
+/* telemetry stays dark until the engines start charging, then powers on like a cockpit display: a hot scan line
+   draws out from the centre, the plate snaps open vertically and settles as the glare burns off, and each readout
+   flickers on in turn while its label decodes (JS). Animations only fill backwards, so once they finish the
+   .flying exit above still owns the plate's opacity and transform */
+.launch .readouts:not(.live){opacity:0;visibility:hidden;transform:translateY(8px);transition:opacity .4s,transform .4s,visibility 0s .4s}
+.launch .readouts.live{animation:hudOn .8s cubic-bezier(.7,0,.2,1) backwards}
+.readouts.live>div{animation:hudCell .55s linear backwards;animation-delay:calc(.55s + var(--n) * 90ms)}
+.readouts>div:nth-child(1){--n:0}.readouts>div:nth-child(2){--n:1}.readouts>div:nth-child(3){--n:2}.readouts>div:nth-child(4){--n:3}
+@keyframes hudOn{0%{opacity:0;transform:scale(0,.02);filter:brightness(4)}10%{opacity:1}42%{transform:scale(1,.02);filter:brightness(4)}72%{transform:scale(1,1.03);filter:brightness(1.6)}100%{opacity:1;transform:none;filter:none}}
+@keyframes hudCell{0%{opacity:0;transform:translateY(6px)}25%{opacity:.8}38%{opacity:.1}55%{opacity:.9}68%{opacity:.35}100%{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.launch .readouts.live,.readouts.live>div{animation:none}}
 .count{font:900 clamp(4.5rem,12.5vw,13rem)/.8 var(--fd);letter-spacing:-.02em;font-variant-numeric:tabular-nums;margin:14px 0 0;white-space:nowrap}
 .count .u{color:var(--dim)}
 .readouts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-top:1px solid var(--line);max-width:1000px;width:100%;justify-self:center}
@@ -282,7 +411,6 @@ html.js:not(.ready) .hero-fade{opacity:0;transform:translateY(20px)}
 #s-system .sticky{align-items:stretch}
 .sys{width:100%;display:flex;flex-direction:column;justify-content:space-between;align-items:center;text-align:center;padding-block:clamp(84px,11vh,120px) calc(clamp(48px,8vh,96px) + env(safe-area-inset-bottom,0px))}
 .sys .eyebrow{justify-content:center;margin-bottom:14px}
-.sys .eyebrow::before{display:none}
 .sys .h2{max-width:12em;margin:0 auto 18px;font-size:clamp(2.4rem,4.8vw,5.2rem)}
 .sys .lede{max-width:36em;margin:0 auto}
 html.js .sys>*{transition:opacity .55s ease,transform .7s cubic-bezier(.2,.8,.2,1)}
@@ -296,26 +424,20 @@ html .sys.leaving>*,html.js .sys.leaving>.rv.in{opacity:0}
 #s-explore{height:900vh}
 .ex{width:100%;display:grid;grid-template-columns:minmax(0,440px) 1fr;gap:40px;align-items:center}
 .plist{list-style:none;margin:0 0 30px;padding:0;display:flex;flex-wrap:wrap;gap:6px}
-.plist button{all:unset;pointer-events:auto;cursor:pointer;font:500 10.5px/1 var(--fm);letter-spacing:.14em;text-transform:uppercase;color:var(--mute);border:1px solid var(--line);border-radius:999px;padding:9px 12px;transition:all .3s;display:inline-flex;gap:8px}
-.plist button:hover{color:var(--bone);border-color:var(--line2)}
-.plist button.on{color:var(--ink);background:var(--bone);border-color:var(--bone)}
-.plist button:focus-visible{outline:1px solid var(--foil);outline-offset:2px}
+/* planet buttons wear the nav's chamfered glass pill (.pill), dimmed until hovered; the world in view is at full
+   strength with a foil hairline, foil type and a warm tint */
+.plist .pill{pointer-events:auto;display:inline-flex;font-size:10.5px;color:var(--mute);padding:10px 14px;opacity:.45;transition:color .3s,background-color .3s,opacity .3s}
+.plist .pill:hover,.plist .pill:focus-visible{color:var(--bone);opacity:1}
+.plist .pill.on{color:var(--foil2);background:rgba(217,166,70,.12);opacity:1}
+.plist .pill.on::after{background:var(--foil2)}
 .card{position:relative}
 .pnum{font:500 11px/1 var(--fm);letter-spacing:.2em;color:var(--foil);text-transform:uppercase}
 .pname{font:900 clamp(4.2rem,9vw,8.6rem)/.8 var(--fd);text-transform:uppercase;margin:14px 0 18px;letter-spacing:-.01em}
 .pline{color:#c3cad6;margin:0 0 26px;max-width:32em;min-height:4.8em}
-.pgrid{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line)}
-.pgrid div{padding:14px 12px 12px 0;border-bottom:1px solid var(--line)}
-.pgrid div:not(:nth-child(3n+1)){padding-left:14px;border-left:1px solid var(--line)}
-.pgrid dt{font:400 10px/1.4 var(--fm);letter-spacing:.14em;text-transform:uppercase;color:var(--mute);margin-bottom:6px}
-.pgrid dd{margin:0;font:700 1.5rem/1 var(--fd);font-variant-numeric:tabular-nums;white-space:nowrap}
-.pmis{margin-top:22px;display:flex;gap:14px;align-items:center;font:500 11px/1.5 var(--fm);letter-spacing:.12em;text-transform:uppercase;color:var(--mute)}
-.pmis b{color:var(--bone);font-weight:500}
 .tag{font:500 10px/1 var(--fm);letter-spacing:.14em;text-transform:uppercase;padding:6px 9px;border-radius:4px;border:1px solid currentColor;white-space:nowrap}
 .tag.go{color:#7fe0a8}.tag.man{color:var(--foil2)}.tag.des{color:var(--ice)}.tag.con{color:var(--mute)}
 .card.swap .pname,.card.swap .pline,.card.swap .pgrid{animation:swap .7s cubic-bezier(.16,1,.3,1)}
 @keyframes swap{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
-.exhint{margin-top:26px;font:400 10.5px/1.5 var(--fm);letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
 
 
 /* missions */
@@ -373,27 +495,23 @@ footer a:hover{color:var(--bone)}
   body[data-side] #scrim::after{opacity:0}
   #s-specs,#s-missions{justify-content:flex-start;padding-right:var(--gut)}
   .sticky{align-items:flex-end;padding-bottom:70px}
-  .pgrid{grid-template-columns:1fr 1fr}
-  .pgrid div:not(:nth-child(3n+1)){padding-left:0;border-left:0}
-  .pgrid div:nth-child(even){padding-left:12px;border-left:1px solid var(--line)}
   .pline{min-height:0}
   .launch{padding-block:100px 70px}
   .cwrap{margin-left:0}
 }
 @media (max-width:520px){
   .hero-title{font-size:18.5vw}  /* "Everywhere" (4.71em) fills the line; "Built in orbit" wraps */
+  .hero-cta .ghost{display:none}  /* one CTA on phones: the primary tour */
   .sndtxt{display:none}
   .snd{padding-right:12px}
   .navr .pill{padding:10px 13px}
   .logo{font-size:18px;letter-spacing:.16em}
   .pname{font-size:3.4rem;margin:8px 0 10px}
   .pline{font-size:.92rem;margin-bottom:14px}
-  .exhint{display:none}
   .plist{margin-bottom:16px}
-  .plist button{padding:7px 10px}
-  .pgrid dd{font-size:1.2rem}
-  .pgrid div{padding-block:9px 8px}
-  .pmis{margin-top:12px}
+  .plist .pill{padding:8px 11px}
+  .pgrid dd{font-size:1.5rem}
+  .pgrid div{padding-block:12px 10px}
   .mlist li{grid-template-columns:52px 1fr}
   .mlist .tag{grid-column:2;justify-self:start}
   .btn{height:50px}
@@ -420,27 +538,77 @@ footer a:hover{color:var(--bone)}
 <div id="grain"></div>
 <div id="cur"></div><div id="cur2"></div>
 
-<div id="loader" role="status" aria-live="polite">
+<div id="loader" role="status" aria-live="polite" aria-label="Loading">
   <div class="ld">
-    <div class="ld-top"><span>Aphelion · Flight Dynamics</span><span>Pre-flight</span></div>
-    <div class="ld-num"><span id="ldn">000</span><small>%</small></div>
-    <div class="ld-bar"><i id="ldb"></i></div>
-    <div id="ldmsg">Calibrating star catalogue</div>
+    <div class="ld-mid">
+      <button class="ld-snd" id="ldsnd" type="button" aria-pressed="false"><span id="ldsndt">Enable sound for a better experience</span></button>
+      <div class="ld-sys" aria-hidden="true">
+        <div class="ld-plane"><span class="ld-axis"></span></div>
+        <div class="ld-plane flat"><span id="ldrings"></span><span id="ldarms"></span></div>
+        <div class="ld-plane"><span class="ld-sun"></span></div>
+      </div>
+      <p class="ld-cap" aria-hidden="true"><b><span id="ldpct">000</span>%</b></p>
+    </div>
   </div>
+  <div class="ld-join"></div>
+  <div class="ld-seam"></div>
+  <div class="ld-burst"></div>
+  <div class="ld-wave"></div>
 </div>
+<script>
+/* loader: runs as soon as its markup is parsed, so the solar system draws while three.js and the assets download */
+(function () {
+  var html = document.documentElement, reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var R = [48, 82, 122, 170, 226, 290];
+  // orbits ink in one after another from the Sun outward; a longer orbit takes a little longer to draw
+  var draw = R.map(function (r, i) { return { dl: .05 + i * .24, D: .6 + (r / 290) * .8 }; });
+  var DRAWN = Math.max.apply(null, draw.map(function (d) { return d.dl + d.D; })) * 1000;
+  var half = function (k) { return '<span class="h ' + k + '"><span class="sp"><span class="c"><b></b></span></span></span>'; };
+  // start angles step by the golden angle so no two pens begin in line
+  document.getElementById('ldrings').innerHTML = R.map(function (r, i) {
+    return '<span class="ld-ring" style="--r:' + r + ';--a:' + Math.round((200 + i * 137.5) % 360) + 'deg;--dl:' + draw[i].dl.toFixed(2) + 's;--D:' + draw[i].D.toFixed(2) + 's;--done:' + (draw[i].dl + draw[i].D).toFixed(2) + 's">' + half('r') + half('l') + '<span class="full"></span></span>';
+  }).join('');
+  // orbital periods follow Kepler (T ∝ r^1.5), scaled so the outermost world still visibly moves
+  document.getElementById('ldarms').innerHTML = R.map(function (r, i) {
+    var t = 2.2 * Math.pow(r / 48, 1.5);
+    return '<span class="ld-arm" style="--r:' + r + ';--t:' + t.toFixed(2) + 's;--d:' + (-t * ((i * .37) % 1)).toFixed(2) + 's;--done:' + (draw[i].dl + draw[i].D).toFixed(2) + 's;--s:' + (4 + r / 55).toFixed(1) + 'px"><i></i></span>';
+  }).join('');
+
+  var ld = { shown: 0, target: 4, goAt: 0 }, go, launched = new Promise(function (r) { go = r; });
+  var pct = document.getElementById('ldpct'), t0 = performance.now(), prev = t0, last = -1;
+  (function tick(now) {
+    now = now || performance.now();
+    var dt = Math.min(.5, (now - prev) / 1000); prev = now;
+    // the count can't outrun the drawing, so 100 lands as the last orbit closes
+    var goal = reduced ? ld.target : Math.min(ld.target, (now - t0) / DRAWN * 100);
+    ld.shown += (goal - ld.shown) * (1 - Math.exp(-dt * 7));  // frame-rate independent, so a stalled frame catches up
+    if (goal >= 100 && ld.shown > 99.5) ld.shown = 100;
+    var v = Math.round(ld.shown);
+    if (v !== last) {
+      last = v;
+      pct.textContent = String(v).padStart(3, '0');
+      // the exit lines launch when the count reads 90%; the doors open when they meet, .75s later
+      if (v >= 90 && !ld.goAt) { ld.goAt = now; html.classList.add('ld-go'); go(ld.goAt + 750); }
+    }
+    if (!html.classList.contains('ready')) requestAnimationFrame(tick);
+  })();
+  window.LD = { setLoad: function (v) { ld.target = v; }, launched: launched };
+})();
+</script>
 
 <header class="nav">
   <a class="logo" href="#s-hero" aria-label="Aphelion — back to top">
     <svg viewBox="0 0 40 40" fill="none" aria-hidden="true"><circle cx="15" cy="20" r="5" fill="#f3cf7a"/><ellipse cx="20" cy="20" rx="17" ry="9" stroke="#e8ebf0" stroke-width="1.4" transform="rotate(-18 20 20)"/><circle cx="36" cy="14.6" r="2.6" fill="#e8ebf0"/></svg>
     Aphelion
   </a>
+  <!-- chapter rail: parked for now; drop `hidden` to bring it back -->
+  <nav class="rail plate" id="rail" aria-label="Chapters" hidden><span class="rail-lbl" aria-hidden="true">Chapters</span></nav>
   <div class="navr">
     <button class="pill snd" id="snd" type="button" aria-pressed="false" aria-label="Sound"><canvas id="sndwave" width="44" height="32" aria-hidden="true"></canvas><span class="sndtxt"><span>Sound</span><b id="sndst">Off</b></span></button>
     <a class="pill solid" href="#s-cta"><span class="bl" data-t="Join the crew"><span>Join the crew</span></span></a>
   </div>
 </header>
 
-<nav class="rail" id="rail" aria-label="Scroll progress"></nav>
 
 <main>
   <section id="s-hero" class="chap" data-side="left" data-sector="Low Earth Orbit" data-label="Orbit" data-track="Earth · Sol III">
@@ -455,19 +623,24 @@ footer a:hover{color:var(--bone)}
   </section>
 
   <section id="s-manifesto" class="chap" data-side="center" data-sector="LEO · 408 km" data-label="Agency" data-track="Earth · Sol III">
-    <p class="mani" id="mani">Every rocket in history was <span data-g>thrown away</span> after one flight. We build ships that come home, refuel in orbit and leave again — because the solar system isn't a <span data-g>destination.</span> It's a <span data-g>commute.</span></p>
+    <div class="mani-pin"><p class="mani" id="mani">Every rocket in history was <span data-g>thrown away</span> after one flight. We build ships that come home, refuel in orbit and <span data-g>leave again.</span></p></div>
+  </section>
+
+  <!-- stats, split out of the manifesto and parked for now. A div, not a section: main > section drives the
+       scroll-to-camera mapping, so bringing this back as its own chapter means adding it there too -->
+  <div id="s-stats" class="chap" hidden>
     <div class="stats">
       <div class="stat rv"><span class="n" data-count="142">142</span><span class="l">Orbital launches</span></div>
       <div class="stat rv d1"><span class="n" data-count="97.9" data-dec="1">97.9<sup>%</sup></span><span class="l">Booster recovery rate</span></div>
       <div class="stat rv d2"><span class="n" data-count="11">11</span><span class="l">Crewed flights</span></div>
       <div class="stat rv d3"><span class="n" data-count="8">8</span><span class="l">Worlds surveyed</span></div>
     </div>
-  </section>
+  </div>
 
   <section id="s-forge" class="chap" data-side="left" data-sector="Anchor Shipyard" data-label="Shipyard" data-track="APH-1 Meridian">
     <div class="sticky">
       <div class="col">
-        <p class="eyebrow">Chapter 02 — The Forge</p>
+        <p class="eyebrow">The Forge</p>
         <h2 class="h2">Assembled 400&nbsp;km above the weather.</h2>
         <p class="lede">No launch loads, no wind shear, no gravity sag. Anchor Shipyard stacks a Meridian-class starship in 19 days.</p>
         <ol class="steps" id="steps">
@@ -477,14 +650,14 @@ footer a:hover{color:var(--bone)}
           <li><span class="no">04</span><span class="t">Propulsion</span><span class="ok">Queued</span><span class="d">Six Helix-V full-flow methalox engines — three sea-level, three vacuum.</span></li>
           <li><span class="no">05</span><span class="t">Crew module</span><span class="ok">Queued</span><span class="d">1,000&nbsp;m³ of pressurised volume under the nose. Room for forty.</span></li>
         </ol>
-        <div class="meter">Assembly <span class="trk"><i id="asmbar"></i></span><b id="asmpct">0%</b></div>
+        <div class="meter" hidden>Assembly <span class="trk"><i id="asmbar"></i></span><b id="asmpct">0%</b></div>
       </div>
     </div>
   </section>
 
   <section id="s-specs" class="chap" data-side="right" data-sector="Anchor Shipyard · Bay 2" data-label="Starship" data-track="APH-1 Meridian">
     <div class="specs">
-      <p class="eyebrow rv">Flight article 07</p>
+      <p class="eyebrow rv">The Ship</p>
       <h2 class="shipname rv">Meridian</h2>
       <p class="shipcls rv">APH-1 · Fully reusable interplanetary starship</p>
       <dl class="sgrid plate rv">
@@ -523,7 +696,7 @@ footer a:hover{color:var(--bone)}
     <div class="sticky">
       <div class="sys">
         <div>
-          <p class="eyebrow rv">Chapter 04 — The Neighbourhood</p>
+          <p class="eyebrow rv">The Neighbourhood</p>
           <h2 class="h2 rv">Eight worlds. One ship to reach them all.</h2>
           <p class="lede rv">From Mercury's scorched iron to Neptune's supersonic winds, 4.5 billion kilometres of real estate — and every Meridian carries enough propellant to get anywhere in it after one refuelling in orbit.</p>
         </div>
@@ -536,16 +709,13 @@ footer a:hover{color:var(--bone)}
     <div class="sticky">
       <div class="ex">
         <div>
-          <p class="eyebrow">Planetary survey · Scroll or choose</p>
           <ul class="plist" id="plist"></ul>
           <div class="card" id="card">
             <div class="pnum" id="pnum">Planet I of VIII</div>
             <h2 class="pname" id="pname">Mercury</h2>
             <p class="pline" id="pline"></p>
-            <dl class="pgrid" id="pgrid"></dl>
-            <div class="pmis" id="pmis"></div>
+            <dl class="pgrid sgrid plate" id="pgrid"></dl>
           </div>
-          <p class="exhint">Click any world in the sky to fly there</p>
         </div>
       </div>
     </div>
@@ -620,16 +790,9 @@ let narrow = innerWidth < 900;
 const html = document.documentElement;
 
 /* ================= loader ================= */
-const ld = { shown: 0, target: 0 };
-const ldMsgs = ['Calibrating star catalogue', 'Spinning up reaction wheels', 'Chilling Helix-V turbopumps', 'Plotting trans-solar trajectory', 'Handing over to flight'];
-function setLoad(v, msg) { ld.target = v; if (msg) $('#ldmsg').textContent = msg; }
-(function tickLoader() {
-  ld.shown += (ld.target - ld.shown) * .12;
-  const v = Math.round(ld.shown);
-  $('#ldn').textContent = String(v).padStart(3, '0');
-  $('#ldb').style.transform = `scaleX(${ld.shown / 100})`;
-  if (!html.classList.contains('loaded')) requestAnimationFrame(tickLoader);
-})();
+// the loader itself runs from the classic script right after its markup, so the orbits start drawing on first paint
+// instead of waiting for three.js to download; the module only reports asset progress and waits for the launch
+const { setLoad, launched: ldLaunched } = window.LD;
 
 /* ================= GLSL ================= */
 const NOISE = /* glsl */`
@@ -884,8 +1047,9 @@ const planetFS = NOISE + `
     if(uHasMap > .5){
       vec3 day = texture2D(uMap, vUv).rgb;
       if(uEarthTex > .5){
-        float c = texture2D(uClouds, vUv + vec2(uTime*.0015, 0.)).r;
-        float cs = texture2D(uClouds, vUv + vec2(uTime*.0015 - .002, .0015)).r;          // cloud shadow, offset toward the light
+        // clouds creep at ~1/10 of the spin; faster, and the lights they mask on the night side read as a sliding layer
+        float c = texture2D(uClouds, vUv + vec2(uTime*.0002, 0.)).r;
+        float cs = texture2D(uClouds, vUv + vec2(uTime*.0002 - .002, .0015)).r;          // cloud shadow, offset toward the light
         float ocean = smoothstep(.015,.09, day.b - day.r) * (1. - smoothstep(.35,.6, day.g));
         vec3 H = normalize(L+V); spec = pow(max(dot(N,H),0.),60.)*ocean*(1.-c)*1.4;
         float night = smoothstep(.1,-.2,ndl);
@@ -1070,28 +1234,28 @@ const flare = (() => {
 const PLANETS = [
   { name: 'Mercury', rn: 'I', r: .9, d: 22, type: 2, seed: 3.1, scale: 3, a: '#4a4541', b: '#9b928a', c: '#34302d', atmo: '#000000',
     line: 'A scorched iron core in a thin rock coat. Our solar-sail tugs slingshot around it to fall toward the Sun.',
-    au: '0.39', dia: '4,879', day: '58.6 d', yr: '88 d', moons: '0', light: '3.2 min', mis: 'Helios Dive', misyr: '2033', st: 'des' },
+    au: '0.39', dia: '4,879', day: '58.6 d', yr: '88 d', moons: '0', light: '3.2 min', mis: 'Helios Dive', misyr: '2033', st: 'des' , hl: ['yr', 'Fastest orbit around the Sun'] },
   { name: 'Venus', rn: 'II', r: 1.5, d: 30, type: 1, seed: 2.2, scale: 1.2, a: '#b9935a', b: '#ead6a4', c: '#a07a48', atmo: '#ffd49a',
     line: 'The surface is 465 °C under 92 atmospheres. So we fly the clouds instead — at 55 km up, it is almost Earth-like.',
-    au: '0.72', dia: '12,104', day: '243 d', yr: '225 d', moons: '0', light: '6.0 min', mis: 'Cloudline', misyr: '2037', st: 'des' },
+    au: '0.72', dia: '12,104', day: '243 d', yr: '225 d', moons: '0', light: '6.0 min', mis: 'Cloudline', misyr: '2037', st: 'des' , hl: ['day', 'Longer than its own year'] },
   { name: 'Earth', rn: 'III', r: 1.6, d: 40, type: 0, seed: 1.7, scale: 1.55, atmo: '#4d8dff',
     line: 'Home port. Every Meridian is stacked, fuelled and crewed at Anchor Shipyard before it leaves low orbit.',
-    au: '1.00', dia: '12,742', day: '23.9 h', yr: '365.25 d', moons: '1', light: '8.3 min', mis: 'Anchor II', misyr: '2027', st: 'go' },
+    au: '1.00', dia: '12,742', day: '23.9 h', yr: '365.25 d', moons: '1', light: '8.3 min', mis: 'Anchor II', misyr: '2027', st: 'go' , hl: ['light', 'The sunlight you see left 8 min ago'] },
   { name: 'Mars', rn: 'IV', r: 1.15, d: 50, type: 2, seed: 5.5, scale: 2.2, storm: 1, a: '#6b2a12', b: '#c4613a', c: '#e0a070', atmo: '#ff9a6a',
     line: 'A day almost exactly like ours under a butterscotch sky. First landing site: the buried ice sheets of Arcadia Planitia.',
-    au: '1.52', dia: '6,779', day: '24.6 h', yr: '687 d', moons: '2', light: '12.7 min', mis: 'Terra Nova I', misyr: '2031', st: 'man' },
+    au: '1.52', dia: '6,779', day: '24.6 h', yr: '687 d', moons: '2', light: '12.7 min', mis: 'Terra Nova I', misyr: '2031', st: 'man' , hl: ['day', 'Within 40 min of an Earth day'] },
   { name: 'Jupiter', rn: 'V', r: 5.2, d: 72, type: 1, seed: 7.7, scale: 1.3, storm: 1, a: '#a87c58', b: '#efe2cc', c: '#7a4f33', atmo: '#e8c9a0',
     line: 'Its radiation belts would kill an unshielded crew within hours. Beneath Europa’s ice, something may be swimming.',
-    au: '5.20', dia: '139,820', day: '9.9 h', yr: '11.9 yr', moons: '95', light: '43 min', mis: 'Deep Drill', misyr: '2039', st: 'des' },
+    au: '5.20', dia: '139,820', day: '9.9 h', yr: '11.9 yr', moons: '95', light: '43 min', mis: 'Deep Drill', misyr: '2039', st: 'des' , hl: ['dia', 'Eleven Earths side by side'] },
   { name: 'Saturn', rn: 'VI', r: 4.3, d: 95, type: 1, seed: 8.8, scale: 1.1, a: '#c3a473', b: '#efe3c0', c: '#a3855a', atmo: '#f3dfb0', ring: true,
     line: 'Rings 280,000 km across and, on average, only about ten metres thick. Titan below them has rain, rivers and seas.',
-    au: '9.54', dia: '116,460', day: '10.7 h', yr: '29.4 yr', moons: '274', light: '1 h 19 m', mis: 'Titan Sailplane', misyr: '2044', st: 'con' },
+    au: '9.54', dia: '116,460', day: '10.7 h', yr: '29.4 yr', moons: '274', light: '1 h 19 m', mis: 'Titan Sailplane', misyr: '2044', st: 'con' , hl: ['moons', 'More moons than any other world'] },
   { name: 'Uranus', rn: 'VII', r: 2.8, d: 116, type: 1, seed: 9.9, scale: .6, a: '#88cdd6', b: '#b4e9ee', c: '#79bcc8', atmo: '#bff4ff',
     line: 'Knocked onto its side by an ancient collision, so each pole gets 42 years of daylight followed by 42 of night.',
-    au: '19.2', dia: '50,724', day: '17.2 h', yr: '84 yr', moons: '28', light: '2 h 40 m', mis: 'Iris Orbiter', misyr: '2046', st: 'con' },
+    au: '19.2', dia: '50,724', day: '17.2 h', yr: '84 yr', moons: '28', light: '2 h 40 m', mis: 'Iris Orbiter', misyr: '2046', st: 'con' , hl: ['yr', 'Each season lasts 21 years'] },
   { name: 'Neptune', rn: 'VIII', r: 2.7, d: 134, type: 1, seed: 11.1, scale: 1.0, a: '#2a4fc0', b: '#5b88ea', c: '#1d3794', atmo: '#7fa6ff',
     line: 'Winds of 2,100 km/h, the fastest in the solar system, on a world that receives 1/900th of the sunlight Earth does.',
-    au: '30.1', dia: '49,244', day: '16.1 h', yr: '164.8 yr', moons: '16', light: '4 h 10 m', mis: 'Triton Relay', misyr: '2050', st: 'con' },
+    au: '30.1', dia: '49,244', day: '16.1 h', yr: '164.8 yr', moons: '16', light: '4 h 10 m', mis: 'Triton Relay', misyr: '2050', st: 'con' , hl: ['light', 'A reply takes over 8 hours'] },
 ];
 const pickables = [];
 PLANETS.forEach((P, k) => {
@@ -1672,13 +1836,14 @@ composer.addPass(new OutputPass());
 /* ================= sections / scroll ================= */
 const sections = $$('main > section');
 const N = sections.length;
-let tops = [], heights = [], vh = innerHeight;
+let tops = [], heights = [], vh = innerHeight, maniBox = { h: 0 };
 function measure() {
   vh = innerHeight;
   // the last chapter plus the footer fill exactly one screen, so the page ends on that frame
   $('#s-cta').style.minHeight = Math.max(0, innerHeight - $('footer').offsetHeight) + 'px';
   tops = sections.map(s => s.getBoundingClientRect().top + scrollY);
   heights = sections.map(s => s.offsetHeight);
+  maniBox = { h: $('#mani').offsetHeight };
 }
 function sectionState(sy) {
   let i = 0; for (let k = 0; k < N; k++) if (sy >= tops[k] - 2) i = k;
@@ -1840,7 +2005,7 @@ function scramble(el, text) {
 const plist = $('#plist');
 PLANETS.forEach((P, k) => {
   const li = document.createElement('li');
-  li.innerHTML = `<button type="button" data-k="${k}">${P.name}</button>`;
+  li.innerHTML = `<button class="pill" type="button" data-k="${k}">${P.name}</button>`;
   plist.appendChild(li);
 });
 function goPlanet(k) {
@@ -1848,7 +2013,6 @@ function goPlanet(k) {
   scrollTo({ top: tops[i] + range * ((k + .3) / 8), behavior: reduced ? 'auto' : 'smooth' });
 }
 plist.addEventListener('click', e => { const b = e.target.closest('button'); if (b) goPlanet(+b.dataset.k); });
-const stLabel = { go: 'In flight', man: 'Manifested', des: 'In design', con: 'Concept' };
 let shownPlanet = -1;
 function showPlanet(k) {
   if (k === shownPlanet) return; shownPlanet = k;
@@ -1856,9 +2020,13 @@ function showPlanet(k) {
   $('#pnum').textContent = `Planet ${P.rn} of VIII · ${P.au} AU from the Sun`;
   $('#pname').textContent = P.name;
   $('#pline').textContent = P.line;
-  $('#pgrid').innerHTML = [['Diameter', P.dia + ' km'], ['Day', P.day], ['Year', P.yr], ['Moons', P.moons], ['Sunlight delay', P.light], ['Distance', P.au + ' AU']]
-    .map(([a, b]) => `<div><dt>${a}</dt><dd>${b}</dd></div>`).join('');
-  $('#pmis').innerHTML = `<span class="tag ${P.st}">${stLabel[P.st]}</span><span>Aphelion mission · <b>${P.mis}</b> · ${P.misyr}</span>`;
+  // same spec-sheet cells as the ship: the figure large, its unit small and mono after it. Each world's most
+  // striking figure (P.hl: [key, why]) is picked out in foil with a one-line note saying why it matters
+  $('#pgrid').innerHTML = [['dia', 'Diameter', P.dia + ' km'], ['day', 'Day', P.day], ['yr', 'Year', P.yr], ['moons', 'Moons', P.moons], ['light', 'Sunlight delay', P.light], ['au', 'Distance', P.au + ' AU']]
+    .map(([key, a, b]) => {
+      const [, n, u] = String(b).match(/^(\S+)(?: (.+))?$/), hl = P.hl && P.hl[0] === key;
+      return `<div${hl ? ' class="hl"' : ''}><dt>${a}</dt><dd>${n}${u ? `<small>${u}</small>` : ''}</dd>${hl ? `<p class="why">${P.hl[1]}</p>` : ''}</div>`;
+    }).join('');
   $$('#plist button').forEach((b, j) => b.classList.toggle('on', j === k));
   PLANETS.forEach((Q, j) => { Q.orbit.material.color.set(j === k ? 0xf3cf7a : 0x9cc2ff); Q.orbit.material.opacity = j === k ? .5 : .13; });
   const card = $('#card'); card.classList.remove('swap'); void card.offsetWidth; card.classList.add('swap');
@@ -2124,7 +2292,11 @@ function setSound(on) {
   const st = $('#sndst'), word = on ? 'On' : 'Off';
   if (reduced || st.textContent === word) st.textContent = word; else scramble(st, word);
   if (on) blip();
+  const ls = $('#ldsnd');
+  ls.classList.toggle('on', on); ls.setAttribute('aria-pressed', on);
+  $('#ldsndt').textContent = on ? 'Sound on' : 'Enable sound for a better experience';
 }
+$('#ldsnd').addEventListener('click', () => setSound(!audio.on));
 let sndClaim = false;
 $('#snd').addEventListener('click', () => { if (sndClaim) { sndClaim = false; return; } setSound(!audio.on); });
 // sound starts off; the toggle's own click turns it on (and unlocks the audio context)
@@ -2160,7 +2332,8 @@ function resize() {
 addEventListener('resize', resize);
 
 /* ================= main loop ================= */
-let sy = scrollY, lastI = -1, holdFull = null, voiceN = 11, asmP = 0;
+let sy = scrollY, lastI = -1, holdFull = null, voiceN = 11, asmP = 0, hudLive = false;
+const readouts = $('.readouts');
 const asmLocked = [false, false, false, false, false], asmMoving = [false, false, false, false, false];
 const camPos = new V3().copy(camera.position), camTgt = new V3(0, .5, 0);
 let camOff = .21, fov = 42;
@@ -2339,6 +2512,13 @@ function tick() {
 
   /* launch UI */
   if (i !== 4) voiceN = sy < tops[4] ? 11 : -1;
+  // telemetry powers on as the count reaches T-06 (charge .4: the display shows ceil of the seconds left), and goes
+  // dark again if you scroll back above that
+  const hud = i === 4 && charge >= .4 - 1e-6;
+  if (hud !== hudLive) {
+    hudLive = hud; readouts.classList.toggle('live', hud);
+    if (hud && !reduced) $$('dt', readouts).forEach((d, k) => { d.dataset.t ??= d.textContent; setTimeout(() => scramble(d, d.dataset.t), 550 + k * 90); });
+  }
   $('#hold').classList.toggle('on', i === 4 && (holdR < CD.end || cdShow > 0));
   if (i === 4) {
     const r = launchReadouts(sp);
@@ -2362,7 +2542,10 @@ function tick() {
 
   /* manifesto */
   if (i === 1 || i === 0) {
-    const lit = Math.floor(clamp((sy - tops[1] + vh * .75) / (heights[1] * .62)) * maniWords.length);
+    // the copy scrolls in fully dimmed and starts lighting once its top line passes 75% of the screen; it pins at
+    // centre when the section reaches the top, and the last word lands at 85% of the pinned stretch, before it lets go
+    const from = tops[1] + (vh - maniBox.h) / 2 - vh * .75, to = tops[1] + (heights[1] - vh) * .85;
+    const lit = Math.floor(clamp((sy - from) / Math.max(1, to - from)) * maniWords.length);
     maniWords.forEach((w, k) => w.classList.toggle('lit', k < lit));
   }
 
@@ -2426,9 +2609,6 @@ function tick() {
     lastI = i; const s = sections[i];
     document.body.dataset.side = s.dataset.side;
     railBtns.forEach((b, n) => b.classList.toggle('on', CHAPTERS[n] === chapterOf[i]));
-    // off on the hero, the launch and the chapter-04 overview; back once the planet-by-planet tour starts
-    const railOn = i > 0 && i !== 4 && i !== 5;
-    rail.classList.toggle('show', railOn); rail.inert = !railOn;
     document.body.classList.toggle('in-launch', i === 4);
   }
 
@@ -2442,9 +2622,9 @@ function tick() {
 
 /* ================= boot ================= */
 (async function boot() {
-  setLoad(18, ldMsgs[0]);
+  setLoad(18);
   await Promise.race([document.fonts.ready, wait(2500)]);
-  setLoad(42, ldMsgs[1]);
+  setLoad(42);
   ship = makeShip({ blueprint: true }); ship.model.rotation.y = Math.PI; shipPivot.add(ship.model); ship.setAssembly(0);
   heroShip = makeShip(); heroShip.model.scale.setScalar(1); heroPivot.add(heroShip.model); heroShip.setAssembly(1);
   // out over Earth's night side there's no studio around it: only the Sun from behind and a little earthshine should light the hull
@@ -2466,18 +2646,21 @@ function tick() {
   dimHero(); shipModel.then(dimHero);
   heroPivot.scale.setScalar(.11);
   await wait(60);
-  setLoad(66, ldMsgs[2]);
+  setLoad(66);
   measure();
   try { renderer.compile(scene, camera); } catch (e) { }
-  setLoad(88, ldMsgs[3]);
+  setLoad(88);
   updateSats(0);
   composer.render();
   await wait(250);
-  setLoad(100, ldMsgs[4]);
+  setLoad(100);
   requestAnimationFrame(tick);
-  await wait(550);
+  // the count only reaches 90% once the assets are in and the orbits are nearly drawn; the lines launch there
+  // and the doors open the moment they meet, .75s later
+  if (reduced) await wait(550);
+  else { const impact = await ldLaunched; await wait(Math.max(0, impact - performance.now())); }
   html.classList.add('loaded');
-  await wait(350);
+  await wait(reduced ? 350 : 100);  // the headline rises as the doors part after the flash
   html.classList.add('ready');
   addEventListener('load', measure);
   setTimeout(measure, 1500);
